@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smalls — California DMA Advertising Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --bg2: #f7f6f3; --bg3: #eeedea;
+    --text: #1a1a1a; --text2: #6b6b6b; --text3: #9a9a96;
+    --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.15);
+    --blue: #378ADD; --blue-bg: #E6F1FB; --blue-text: #0C447C;
+    --green: #1D9E75; --green-bg: #E1F5EE; --green-text: #085041;
+    --coral: #D85A30; --gray400: #888780; --gray200: #B4B2A9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a; --bg2: #242422; --bg3: #2e2e2c;
+      --text: #e8e8e4; --text2: #a0a09a; --text3: #6b6b66;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+      --blue-bg: #0C447C; --blue-text: #B5D4F4;
+      --green-bg: #085041; --green-text: #9FE1CB;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  .header { margin-bottom: 2.5rem; }
+  .header h1 { font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+  .header p { font-size: 14px; color: var(--text2); }
+  .badge { display: inline-block; background: var(--blue-bg); color: var(--blue-text); font-size: 11px; font-weight: 500; padding: 2px 10px; border-radius: 6px; }
+  .section { margin-bottom: 2.5rem; }
+  .section-title { font-size: 17px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+  .section-sub { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .metric-card { background: var(--bg2); border-radius: 10px; padding: 16px; }
+  .metric-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .metric-value { font-size: 26px; font-weight: 600; }
+  .metric-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .accent-blue { color: var(--blue); }
+  .accent-green { color: var(--green); }
+  .ring-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin: 16px 0 8px; }
+  .ring-item { text-align: center; }
+  .ring-label { font-size: 12px; color: var(--text2); margin-top: 6px; }
+  .ring-sublabel { font-size: 11px; color: var(--text3); }
+  .map-container { width: 100%; background: var(--bg2); border-radius: 12px; overflow: hidden; position: relative; }
+  .map-legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 10px 0 4px; font-size: 12px; color: var(--text2); }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; border-bottom: 1.5px solid var(--border2); color: var(--text2); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; }
+  td { padding: 10px 12px; border-bottom: 0.5px solid var(--border); }
+  .num { text-align: right; }
+  .dma-name { font-weight: 500; }
+  .pfe-row { background: rgba(55,138,221,0.04); }
+  .pfe-badge { display: inline-block; background: var(--blue-bg); color: var(--blue-text); font-size: 10px; font-weight: 500; padding: 1px 7px; border-radius: 4px; margin-left: 5px; }
+  .rank-badge { font-size: 11px; color: var(--text3); }
+  tfoot td { font-weight: 600; border-top: 2px solid var(--border2); }
+  .change-up { color: #639922; font-weight: 500; }
+  .change-down { color: #A32D2D; font-weight: 500; }
+  .tab-row { display: flex; gap: 4px; margin-bottom: 12px; }
+  .tab-btn { background: transparent; border: 1px solid var(--border2); border-radius: 8px; padding: 7px 16px; font-size: 13px; cursor: pointer; color: var(--text2); font-family: inherit; transition: all 0.15s; }
+  .tab-btn:hover { background: var(--bg2); }
+  .tab-btn.active { background: var(--bg2); color: var(--text); font-weight: 500; border-color: var(--border2); }
+  .chart-wrap { position: relative; width: 100%; height: 300px; margin: 16px 0; }
+  .chart-legend { display: flex; gap: 16px; font-size: 12px; color: var(--text2); margin-top: 8px; }
+  .chart-legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: middle; }
+  .footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 12px; color: var(--text3); }
+  .divider { height: 1px; background: var(--border); margin: 2rem 0; }
+  @media (max-width: 640px) {
+    .container { padding: 1.5rem 1rem 3rem; }
+    .metric-grid { grid-template-columns: 1fr 1fr; }
+    .ring-row { gap: 12px; }
+    table { font-size: 12px; }
+    th, td { padding: 8px 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>Smalls — California DMA advertising dashboard</h1>
+  <p>Meta spend &amp; reach by DMA · YTD 2026 (Jan 1 – May 4) · Focus: Pet Food Express markets</p>
+</div>
+
+<!-- TOP METRICS -->
+<div class="section">
+  <div class="metric-grid" id="top-metrics"></div>
+</div>
+
+<!-- PFE SHARE RINGS -->
+<div class="section">
+  <p class="section-title">PFE DMA share of total US</p>
+  <p class="section-sub">How much of our national spend and reach is going to the 6 DMAs where Pet Food Express operates</p>
+  <div class="ring-row" id="rings"></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- CALIFORNIA MAP -->
+<div class="section">
+  <p class="section-title">California DMA spend map</p>
+  <div class="map-legend">
+    <span class="legend-item"><span class="legend-dot" style="background:#378ADD;"></span> PFE store DMA</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#888780;"></span> Other California DMA</span>
+    <span style="font-size:11px; color:var(--text3);">Bubble size = YTD spend</span>
+  </div>
+  <div class="map-container" id="map-container"></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- PFE DMA BREAKDOWN TABLE -->
+<div class="section">
+  <p class="section-title">PFE DMA breakdown</p>
+  <p class="section-sub">Individual markets where Pet Food Express has retail locations</p>
+  <div style="overflow-x:auto;">
+    <table>
+      <thead><tr>
+        <th>DMA</th><th class="num">YTD spend</th><th class="num">% of US spend</th>
+        <th class="num">YTD reach</th><th class="num">% of US reach</th>
+        <th class="num">Apr MTD spend</th>
+      </tr></thead>
+      <tbody id="pfe-table-body"></tbody>
+      <tfoot id="pfe-table-foot"></tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- WEEK OVER WEEK -->
+<div class="section">
+  <p class="section-title">Week-over-week spend comparison</p>
+  <p class="section-sub">"Most recent week" = Apr 27–May 3 (the week Pet Food Express had their biggest sales week ever). "Prior week" = Apr 20–26.</p>
+  <div class="tab-row">
+    <button class="tab-btn active" onclick="showTab('ca')">California DMAs</button>
+    <button class="tab-btn" onclick="showTab('top')">Top 15 US DMAs</button>
+  </div>
+  <div style="overflow-x:auto;">
+    <table>
+      <thead><tr>
+        <th>DMA</th><th class="num">Most recent week</th><th class="num">Prior week</th>
+        <th class="num">WoW change</th><th class="num">MTD spend</th><th class="num">MTD reach</th>
+      </tr></thead>
+      <tbody id="wow-table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- TREND CHART -->
+<div class="section">
+  <p class="section-title">PFE DMAs vs other California — weekly spend trend</p>
+  <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+  <div class="chart-legend">
+    <span><span class="chart-legend-dot" style="background:#378ADD;"></span> PFE DMAs</span>
+    <span><span class="chart-legend-dot" style="background:#B4B2A9;"></span> Other California DMAs</span>
+  </div>
+</div>
+
+<div class="footer">
+  <p>Data source: Meta Ads Manager · Spend by DMA exports · Attribution: 7-day click</p>
+  <p>PFE DMAs = SF-Oakland-San Jose, Sacramento-Stockton-Modesto, Fresno-Visalia, Monterey-Salinas, Chico-Redding, Eureka</p>
+  <p style="margin-top:8px;">Generated May 2026 · Smalls internal use</p>
+</div>
+
+</div>
+
+<script>
+const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+
+// ─── DATA ───
+const pfeDMANames = ['San Francisco-Oak-San Jose','Sacramnto-Stkton-Modesto','Fresno-Visalia','Monterey-Salinas','Chico-Redding','Eureka'];
+const pfeLabels = {'San Francisco-Oak-San Jose':'SF-Oakland-San Jose','Sacramnto-Stkton-Modesto':'Sacramento-Stockton-Modesto','Fresno-Visalia':'Fresno-Visalia','Monterey-Salinas':'Monterey-Salinas','Chico-Redding':'Chico-Redding','Eureka':'Eureka'};
+
+const caDMAs = {
+  'Los Angeles':{lat:34.05,lng:-118.24,pfe:false},
+  'San Francisco-Oak-San Jose':{lat:37.77,lng:-122.20,pfe:true},
+  'San Diego':{lat:32.72,lng:-117.16,pfe:false},
+  'Sacramnto-Stkton-Modesto':{lat:38.58,lng:-121.49,pfe:true},
+  'Fresno-Visalia':{lat:36.74,lng:-119.77,pfe:true},
+  'Santabarbra-Sanmar-Sanluob':{lat:34.42,lng:-119.70,pfe:false},
+  'Monterey-Salinas':{lat:36.67,lng:-121.66,pfe:true},
+  'Bakersfield':{lat:35.37,lng:-119.02,pfe:false},
+  'Chico-Redding':{lat:40.59,lng:-122.39,pfe:true},
+  'Palm Springs':{lat:33.83,lng:-116.55,pfe:false},
+  'Eureka':{lat:40.80,lng:-124.16,pfe:true},
+  'Yuma-El Centro':{lat:32.73,lng:-115.51,pfe:false},
+  'Reno':{lat:39.53,lng:-119.81,pfe:false}
+};
+
+// YTD data (Jan 1 - May 4, 2026)
+const ytd = {
+'New York':{s:585808.68,r:2089288},'Los Angeles':{s:447208.08,r:1736977},'Chicago':{s:219990.77,r:761976},'Philadelphia':{s:204313.94,r:888972},'Boston (Manchester)':{s:201487.06,r:770169},'San Francisco-Oak-San Jose':{s:189623.01,r:614497},'Seattle-Tacoma':{s:173260.75,r:630883},'Washington, DC (Hagrstwn)':{s:153206.57,r:651366},'Atlanta':{s:152807.18,r:569433},'Phoenix (Prescott)':{s:144927.04,r:663656},'Dallas-Ft. Worth':{s:142259.36,r:651366},'Tampa-St. Pete (Sarasota)':{s:133402.70,r:503887},'Denver':{s:122214.92,r:438341},'Orlando-Daytona Bch-Melbrn':{s:118871.99,r:417858},'Miami-Ft. Lauderdale':{s:115840.22,r:385085},'Detroit':{s:114906.34,r:401471},'Houston':{s:108712.44,r:520274},'Portland, OR':{s:95652.66,r:458824},'San Diego':{s:91241.49,r:319538},'Cleveland-Akron (Canton)':{s:90655.46,r:360505},'Sacramnto-Stkton-Modesto':{s:89609.96,r:413761},'Minneapolis-St. Paul':{s:83511.29,r:340021},'Charlotte':{s:78006.90,r:221219},'Salt Lake City':{s:77809.56,r:368698},'Nashville':{s:68345.43,r:221219},'Pittsburgh':{s:67546.66,r:221219},'Raleigh-Durham (Fayetvlle)':{s:67328.78,r:307248},'Hartford & New Haven':{s:65208.46,r:270378},'Indianapolis':{s:65157.12,r:249895},'Austin':{s:64649.74,r:286765},'Columbus, OH':{s:59708.17,r:270378},'Las Vegas':{s:59099.97,r:225315},'St. Louis':{s:58823.06,r:196639},'Milwaukee':{s:57497.80,r:225315},'West Palm Beach-Ft. Pierce':{s:57229.16,r:180252},'Kansas City':{s:56427.09,r:229412},'Greenvll-Spart-Ashevll-And':{s:54933.52,r:221219},'Baltimore':{s:52464.32,r:274475},'Harrisburg-Lncstr-Leb-York':{s:50575.01,r:176156},'Cincinnati':{s:48286.83,r:192542},'Norfolk-Portsmth-Newpt Nws':{s:47190.86,r:188446},'San Antonio':{s:46705.27,r:172059},'Grand Rapids-Kalmzoo-B.Crk':{s:44794.96,r:225315},'Jacksonville':{s:44359.62,r:147479},'Albany-Schenectady-Troy':{s:43658.67,r:151576},'Portland-Auburn':{s:39851.48,r:131093},'Providence-New Bedford':{s:39709.41,r:172059},'Buffalo':{s:39004.78,r:172059},'Richmond-Petersburg':{s:38208.93,r:159769},'Ft. Myers-Naples':{s:38159.05,r:86030},'Wilkes Barre-Scranton-Hztn':{s:35486.16,r:139286},'Albuquerque-Santa Fe':{s:34285.47,r:155672},'Louisville':{s:33717.17,r:163866},'Greensboro-H.Point-W.Salem':{s:32718.87,r:151576},'Oklahoma City':{s:31845.94,r:176156},'Spokane':{s:30554.92,r:90126},'Rochester, NY':{s:27853.28,r:86030},'Charleston, SC':{s:27463.50,r:118803},'Knoxville':{s:27371.66,r:98319},'Green Bay-Appleton':{s:26678.23,r:114706},'Burlington-Plattsburgh':{s:26648.26,r:81933},'New Orleans':{s:26444.51,r:122899},'Madison':{s:26035.29,r:135189},'Tucson (Sierra Vista)':{s:25514.63,r:73740},'Mobile-Pensacola (Ft Walt)':{s:25347.29,r:102416},'Syracuse':{s:25028.15,r:122899},'Birmingham (Ann And Tusc)':{s:24983.10,r:106513},'Fresno-Visalia':{s:24903.88,r:139286},'Boise':{s:24858.48,r:90126},'Des Moines-Ames':{s:24172.65,r:118803},'Dayton':{s:23924.90,r:106513},'Savannah':{s:23025.72,r:98319},'Tulsa':{s:22203.32,r:118803},'Reno':{s:21731.25,r:106513},'Flint-Saginaw-Bay City':{s:21130.96,r:65546},'Toledo':{s:20799.30,r:73740},'Colorado Springs-Pueblo':{s:20720.31,r:135189},'Springfield-Holyoke':{s:20559.22,r:77836},'Roanoke-Lynchburg':{s:20403.65,r:77836},'Lexington':{s:19849.79,r:102416},'Chattanooga':{s:19304.22,r:86030},'Wichita-Hutchinson Plus':{s:19092.74,r:98319},'Omaha':{s:18518.53,r:81933},'Santabarbra-Sanmar-Sanluob':{s:18281.42,r:53256},'Memphis':{s:18113.62,r:77836},'Springfield, MO':{s:18076.63,r:65546},'Columbia, SC':{s:17899.96,r:65546},'Little Rock-Pine Bluff':{s:17763.90,r:86030},'Cedar Rapids-Wtrlo-Iwc&Dub':{s:17479.52,r:86030},'Champaign&Sprngfld-Decatur':{s:16687.51,r:94223},'Monterey-Salinas':{s:16601.97,r:110609},'Huntsville-Decatur (Flor)':{s:16534.37,r:61450},'Ft. Smith-Fay-Sprngdl-Rgrs':{s:16409.36,r:77836},'South Bend-Elkhart':{s:16382.56,r:81933},'Wilmington':{s:16189.32,r:49160},'Myrtle Beach-Florence':{s:16049.81,r:61450},'Lansing':{s:14763.51,r:73740},'Ft. Wayne':{s:14593.36,r:45063},'Eugene':{s:14580.02,r:73740},'Charleston-Huntington':{s:14474.52,r:61450},'Greenville-N.Bern-Washngtn':{s:14352.64,r:57353},'Yakima-Pasco-Rchlnd-Knnwck':{s:13683.41,r:65546},'Traverse City-Cadillac':{s:13606.20,r:45063},'Davenport-R.Island-Moline':{s:13317.01,r:65546},'Tri-Cities, TN-VA':{s:13157.06,r:65546},'Waco-Temple-Bryan':{s:13089.61,r:102416},'Peoria-Bloomington':{s:12800.60,r:40966},'Johnstown-Altoona-St Colge':{s:12768.39,r:57353},'Sioux Falls(Mitchell)':{s:12239.82,r:45063},'Youngstown':{s:12198.06,r:61450},'Paducah-Cape Girard-Harsbg':{s:11909.82,r:53256},'El Paso (Las Cruces)':{s:11886.24,r:69643},'Baton Rouge':{s:11135.57,r:53256},'Fargo-Valley City':{s:11071.94,r:45063},'Bangor':{s:11003.06,r:49160},'La Crosse-Eau Claire':{s:10976.90,r:45063},'Palm Springs':{s:10602.94,r:36870},'Tallahassee-Thomasville':{s:10475.61,r:49160},'Augusta-Aiken':{s:10438.54,r:40966},'Evansville':{s:10167.90,r:57353},'Bakersfield':{s:10078.21,r:57353},'Lincoln & Hastings-Krny':{s:9714.05,r:57353},'Chico-Redding':{s:9692.73,r:45063},'Rockford':{s:9448.01,r:45063},'Medford-Klamath Falls':{s:9405.28,r:40966},'Wausau-Rhinelander':{s:9004.41,r:20483},'Shreveport':{s:8903.90,r:16387},'Harlingen-Wslco-Brnsvl-Mca':{s:8899.78,r:65546},'Macon':{s:8780.98,r:20483},'Minot-Bsmrck-Dcknsn(Wlstn)':{s:8371.08,r:28677},'Columbia-Jefferson City':{s:8279.79,r:32773},'Salisbury':{s:8183.73,r:32773},'Binghamton':{s:8165.13,r:49160},'Panama City':{s:7899.89,r:36870},'Erie':{s:7877.28,r:32773},'Gainesville':{s:7721.56,r:45063},'Columbus, GA (Opelika, Al)':{s:7445.66,r:32773},'Idaho Fals-Pocatllo(Jcksn)':{s:7388.46,r:32773},'Tyler-Longview(Lfkn&Ncgd)':{s:7318.25,r:36870},'Topeka':{s:7236.44,r:16387},'Corpus Christi':{s:6898.31,r:45063},'Duluth-Superior':{s:6750.85,r:40966},'Lafayette, LA':{s:6623.83,r:28677},'Missoula':{s:6584.41,r:24580},'Jackson, MS':{s:6500.14,r:8193},'Harrisonburg':{s:6005.46,r:32773},'Rapid City':{s:5906.93,r:24580},'Utica':{s:5904.23,r:40966},'Rochester-Mason City-Austin':{s:5850.66,r:24580},'Bend, OR':{s:5735.51,r:32773},'Joplin-Pittsburg':{s:5701.48,r:28677},'Charlottesville':{s:5661.27,r:20483},'Montgomery-Selma':{s:5584.72,r:24580},'Terre Haute':{s:5419.38,r:20483},'Sioux City':{s:5280.10,r:32773},'Biloxi-Gulfport':{s:5227.93,r:20483},'Wheeling-Steubenville':{s:5164.40,r:32773},'Unknown':{s:5132.65,r:28677},'Billings':{s:5104.16,r:28677},'Elmira (Corning)':{s:5090.96,r:36870},'Watertown':{s:5052.55,r:24580},'Odessa-Midland':{s:4785.93,r:20483},'Amarillo':{s:4747.40,r:36870},'Yuma-El Centro':{s:4721.47,r:28677},'Butte-Bozeman':{s:4578.86,r:4097},'Wichita Falls & Lawton':{s:4556.06,r:20483},'Lubbock':{s:4550.24,r:16387},'Sherman-Ada':{s:4357.60,r:12290},'Marquette':{s:4323.28,r:32773},'Clarksburg-Weston':{s:4039.85,r:28677},'Lafayette, IN':{s:3995.77,r:0},'Grand Junction-Montrose':{s:3970.33,r:12290},'Beaumont-Port Arthur':{s:3655.25,r:12290},'Eureka':{s:3558.42,r:28677},'Bluefield-Beckley-Oak Hill':{s:3533.58,r:28677},'Bowling Green':{s:3393.48,r:16387},'Quincy-Hannibal-Keokuk':{s:3389.20,r:4097},'Twin Falls':{s:3349.85,r:12290},'Columbus-Tupelo-W Pnt-Hstn':{s:3349.04,r:12290},'Albany, GA':{s:3285.36,r:4097},'Monroe-El Dorado':{s:3277.44,r:16387},'Dothan':{s:3192.76,r:4097},'Abilene-Sweetwater':{s:2954.83,r:4097},'Casper-Riverton':{s:2939.03,r:4097},'Lake Charles':{s:2637.11,r:8193},'Hattiesburg-Laurel':{s:2616.50,r:12290},'Parkersburg':{s:2607.75,r:4097},'Jackson, TN':{s:2475.28,r:12290},'Lima':{s:2370.53,r:12290},'Great Falls':{s:2267.24,r:8193},'Jonesboro':{s:2239.56,r:12290},'Alexandria, LA':{s:1944.91,r:4097},'St. Joseph':{s:1874.90,r:12290},'Mankato':{s:1831.16,r:8193},'Laredo':{s:1660.08,r:8193},'San Angelo':{s:1633.57,r:12290},'Presque Isle':{s:1616.14,r:0},'Ottumwa-Kirksville':{s:1592.32,r:4097},'Helena':{s:1547.84,r:16387},'Zanesville':{s:1304.60,r:4097},'Meridian':{s:956.11,r:0},'Victoria':{s:906.82,r:4097},'Alpena':{s:726.67,r:4097},'Greenwood-Greenville':{s:612.15,r:4097},'North Platte':{s:437.95,r:0},'Juneau':{s:429.64,r:0},'Cheyenne-Scottsbluff':{s:286.98,r:4097},'Glendive':{s:156.68,r:0},'Honolulu':{s:3.03,r:0},'Anchorage':{s:0.72,r:0},'Fairbanks':{s:0.01,r:0}
+};
+
+// April MTD (Apr 1 - May 4)
+const aprMtd = {
+'Los Angeles':{s:228282.00,r:1134825},'New York':{s:191387.42,r:1130728},'San Francisco-Oak-San Jose':{s:92973.04,r:393297},'Dallas-Ft. Worth':{s:68039.17,r:458846},'Tampa-St. Pete (Sarasota)':{s:62821.24,r:356425},'Philadelphia':{s:61868.44,r:516202},'Chicago':{s:57235.52,r:409684},'Denver':{s:57160.60,r:311360},'Boston (Manchester)':{s:57017.41,r:413781},'Miami-Ft. Lauderdale':{s:56956.59,r:245810},'Orlando-Daytona Bch-Melbrn':{s:56373.70,r:278585},'Houston':{s:53438.80,r:335941},'Washington, DC (Hagrstwn)':{s:46541.17,r:348231},'San Diego':{s:45787.55,r:196648},'Sacramnto-Stkton-Modesto':{s:44438.89,r:270392},'Seattle-Tacoma':{s:43762.91,r:315457},'Portland, OR':{s:41144.21,r:294973},'Phoenix (Prescott)':{s:39155.86,r:344135},'Atlanta':{s:38051.72,r:323650},'Minneapolis-St. Paul':{s:37977.45,r:217133},'Fresno-Visalia':{s:12848.09,r:102421},'Santabarbra-Sanmar-Sanluob':{s:9070.20,r:40968},'Monterey-Salinas':{s:8344.69,r:73743},'Bakersfield':{s:5149.49,r:36872},'Palm Springs':{s:5010.61,r:24581},'Chico-Redding':{s:4987.74,r:36872},'Eureka':{s:1787.98,r:16387},'Yuma-El Centro':{s:1636.30,r:20484},'Reno':{s:6392.76,r:57356}
+};
+
+// L7D / L14D for WoW
+const l7d = {'Los Angeles':40926.23,'New York':34870.16,'San Francisco-Oak-San Jose':16277.75,'Dallas-Ft. Worth':12826.06,'San Diego':8513.46,'Sacramnto-Stkton-Modesto':8311.44,'Fresno-Visalia':2390.92,'Santabarbra-Sanmar-Sanluob':1668.45,'Monterey-Salinas':1484.32,'Bakersfield':976.27,'Chico-Redding':958.33,'Palm Springs':856.54,'Eureka':338.18,'Yuma-El Centro':305.51,'Reno':1278.76,'Tampa-St. Pete (Sarasota)':11916.53,'Philadelphia':11798.55,'Boston (Manchester)':11229.33,'Chicago':11090.92,'Denver':10833.89,'Orlando-Daytona Bch-Melbrn':10778.49,'Miami-Ft. Lauderdale':10131.84,'Houston':9932.03,'Washington, DC (Hagrstwn)':8698.52,'Seattle-Tacoma':8487.26,'Portland, OR':7840.89,'Phoenix (Prescott)':7840.75,'Atlanta':7393.12,'Minneapolis-St. Paul':7199.26};
+const l14d = {'Los Angeles':87293.18,'New York':73126.05,'San Francisco-Oak-San Jose':34902.30,'Dallas-Ft. Worth':26978.48,'San Diego':17982.42,'Sacramnto-Stkton-Modesto':17613.22,'Fresno-Visalia':5044.29,'Santabarbra-Sanmar-Sanluob':3514.45,'Monterey-Salinas':3219.14,'Bakersfield':2018.11,'Chico-Redding':2010.97,'Palm Springs':1910.68,'Eureka':718.10,'Yuma-El Centro':624.27,'Reno':2605.00,'Tampa-St. Pete (Sarasota)':24959.88,'Philadelphia':24555.75,'Boston (Manchester)':22662.46,'Chicago':22760.80,'Denver':22342.09,'Orlando-Daytona Bch-Melbrn':22425.74,'Miami-Ft. Lauderdale':21540.13,'Houston':21191.52,'Washington, DC (Hagrstwn)':18395.73,'Seattle-Tacoma':17342.84,'Portland, OR':15911.45,'Phoenix (Prescott)':16082.57,'Atlanta':15688.59,'Minneapolis-St. Paul':14876.88};
+const l28d = {'Los Angeles':189826.53,'New York':160604.17,'San Francisco-Oak-San Jose':77328.68,'Dallas-Ft. Worth':56665.82,'San Diego':38401.08,'Sacramnto-Stkton-Modesto':37362.40,'Fresno-Visalia':10823.26,'Santabarbra-Sanmar-Sanluob':7662.74,'Monterey-Salinas':7007.88,'Bakersfield':4325.08,'Chico-Redding':4215.19,'Palm Springs':4163.08,'Eureka':1516.80,'Yuma-El Centro':1386.18,'Reno':5536.51,'Tampa-St. Pete (Sarasota)':52200.73,'Philadelphia':52638.02,'Boston (Manchester)':48686.14,'Chicago':49315.84,'Denver':48027.29,'Orlando-Daytona Bch-Melbrn':46750.24,'Miami-Ft. Lauderdale':46479.17,'Houston':44300.14,'Washington, DC (Hagrstwn)':39501.73,'Seattle-Tacoma':38093.11,'Portland, OR':34853.66,'Phoenix (Prescott)':34072.48,'Atlanta':32971.48,'Minneapolis-St. Paul':31833.82};
+const aprMtdReach = {'Los Angeles':1134825,'San Francisco-Oak-San Jose':393297,'Sacramnto-Stkton-Modesto':270392,'San Diego':196648,'Fresno-Visalia':102421,'Monterey-Salinas':73743,'Chico-Redding':36872,'Eureka':16387,'Santabarbra-Sanmar-Sanluob':40968,'Bakersfield':36872,'Palm Springs':24581,'Yuma-El Centro':20484,'Reno':57356};
+
+// ─── COMPUTED VALUES ───
+let usSpend=0, usReach=0;
+Object.values(ytd).forEach(d => { usSpend+=d.s; usReach+=d.r; });
+
+let pfeSpendYTD=0, pfeReachYTD=0;
+pfeDMANames.forEach(k => { pfeSpendYTD+=ytd[k].s; pfeReachYTD+=ytd[k].r; });
+
+let aprUsSpend=0, aprUsReach=0;
+Object.values(aprMtd).forEach(d => { aprUsSpend+=d.s; aprUsReach+=d.r; });
+// Approximate full April US from the MTD file total
+const aprUsTotalSpend = 2097754; // sum of all DMAs in Apr MTD file
+const aprUsTotalReach = 14168910;
+
+let aprPfeSpend=0, aprPfeReach=0;
+pfeDMANames.forEach(k => { if(aprMtd[k]){ aprPfeSpend+=aprMtd[k].s; aprPfeReach+=aprMtd[k].r; }});
+
+const spendPctYTD = pfeSpendYTD/usSpend*100;
+const reachPctYTD = pfeReachYTD/usReach*100;
+const aprSpendPct = aprPfeSpend/aprUsTotalSpend*100;
+const aprReachPct = aprPfeReach/aprUsTotalReach*100;
+
+// ─── HELPERS ───
+function fmt(n){ return '$'+Math.round(n).toLocaleString(); }
+function fmtK(n){ return n>=1000000?'$'+(n/1000000).toFixed(1)+'M':'$'+Math.round(n/1000).toLocaleString()+'K'; }
+function fmtReach(n){ return n>=1000000?(n/1000000).toFixed(1)+'M':Math.round(n/1000).toLocaleString()+'K'; }
+
+// ─── TOP METRICS ───
+const sorted = Object.entries(ytd).sort((a,b)=>b[1].s-a[1].s);
+const sfRank = sorted.findIndex(e=>e[0]==='San Francisco-Oak-San Jose')+1;
+const sacRank = sorted.findIndex(e=>e[0]==='Sacramnto-Stkton-Modesto')+1;
+
+document.getElementById('top-metrics').innerHTML = `
+  <div class="metric-card"><p class="metric-label">PFE DMAs — YTD spend</p><p class="metric-value accent-blue">${fmtK(pfeSpendYTD)}</p><p class="metric-sub">${spendPctYTD.toFixed(1)}% of total US</p></div>
+  <div class="metric-card"><p class="metric-label">PFE DMAs — YTD reach</p><p class="metric-value accent-green">${fmtReach(pfeReachYTD)}</p><p class="metric-sub">${reachPctYTD.toFixed(1)}% of total US</p></div>
+  <div class="metric-card"><p class="metric-label">SF Bay Area — US rank</p><p class="metric-value">#${sfRank}</p><p class="metric-sub">${fmtK(ytd['San Francisco-Oak-San Jose'].s)} YTD</p></div>
+  <div class="metric-card"><p class="metric-label">Sacramento — US rank</p><p class="metric-value">#${sacRank}</p><p class="metric-sub">${fmtK(ytd['Sacramnto-Stkton-Modesto'].s)} YTD</p></div>
+`;
+
+// ─── RINGS ───
+function ringSVG(pct, color, label, sub) {
+  const size=110, stroke=9, r=(size-stroke)/2, circ=2*Math.PI*r;
+  const filled=circ*pct/100;
+  const trail=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)';
+  const textFill=isDark?'#e8e8e4':'#1a1a1a';
+  const subFill=isDark?'rgba(255,255,255,0.45)':'#9a9a96';
+  return `<div class="ring-item"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${trail}" stroke-width="${stroke}"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-dasharray="${filled.toFixed(1)} ${(circ-filled).toFixed(1)}" stroke-dashoffset="${(circ/4).toFixed(1)}" stroke-linecap="round"/>
+    <text x="${size/2}" y="${size/2-4}" text-anchor="middle" font-size="19" font-weight="600" fill="${textFill}">${pct.toFixed(1)}%</text>
+    <text x="${size/2}" y="${size/2+13}" text-anchor="middle" font-size="10" fill="${subFill}">${sub}</text>
+  </svg><p class="ring-label">${label}</p></div>`;
+}
+
+document.getElementById('rings').innerHTML =
+  ringSVG(spendPctYTD, '#378ADD', 'YTD spend share', 'of US total') +
+  ringSVG(reachPctYTD, '#1D9E75', 'YTD reach share', 'of US total') +
+  ringSVG(aprSpendPct, '#378ADD', 'April spend share', 'of US total') +
+  ringSVG(aprReachPct, '#1D9E75', 'April reach share', 'of US total');
+
+// ─── MAP ───
+(function drawMap(){
+  const W=680, H=520;
+  const mapEl = document.getElementById('map-container');
+  const canvas = document.createElement('canvas');
+  canvas.width = W*2; canvas.height = H*2;
+  canvas.style.width = '100%'; canvas.style.height = 'auto';
+  mapEl.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2,2);
+
+  // Simple Mercator projection centered on California
+  function project(lng, lat) {
+    const cx=-119.5, cy=37.2, scale=3800;
+    const x = (lng-cx)*scale*Math.PI/180 + W/2;
+    const latRad = lat*Math.PI/180;
+    const cyRad = cy*Math.PI/180;
+    const y = (Math.log(Math.tan(Math.PI/4+cyRad/2)) - Math.log(Math.tan(Math.PI/4+latRad/2)))*scale + H/2;
+    return [x,y];
+  }
+
+  // CA outline approximation
+  const caOutline = [[-124.4,42],[-122.4,42],[-120,42],[-120,39],[-117.6,33.5],[-117.2,32.6],[-114.6,32.7],[-114.6,35],[-114.7,36.2],[-117.5,37],[-118.5,37.8],[-120,38.9],[-121.5,39.5],[-122.4,40.3],[-124,40.5],[-124.4,42]];
+  ctx.beginPath();
+  caOutline.forEach((p,i)=>{const[x,y]=project(p[0],p[1]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.closePath();
+  ctx.fillStyle=isDark?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.02)';
+  ctx.fill();
+  ctx.strokeStyle=isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.08)';
+  ctx.lineWidth=0.5;
+  ctx.stroke();
+
+  // Bubbles
+  const maxSpend = Math.max(...Object.keys(caDMAs).map(k=>ytd[k]?ytd[k].s:0));
+  const entries = Object.entries(caDMAs).map(([name,info])=>{
+    const spend=ytd[name]?ytd[name].s:0;
+    const reach=ytd[name]?ytd[name].r:0;
+    const [x,y]=project(info.lng,info.lat);
+    return {name,spend,reach,x,y,pfe:info.pfe};
+  }).sort((a,b)=>b.spend-a.spend);
+
+  function rScale(s){ return 6+Math.sqrt(s/maxSpend)*58; }
+
+  entries.forEach(d=>{
+    const r=rScale(d.spend);
+    ctx.beginPath();
+    ctx.arc(d.x,d.y,r,0,Math.PI*2);
+    ctx.fillStyle=d.pfe?(isDark?'rgba(55,138,221,0.3)':'rgba(55,138,221,0.15)'):(isDark?'rgba(136,135,128,0.2)':'rgba(136,135,128,0.12)');
+    ctx.fill();
+    ctx.strokeStyle=d.pfe?'#378ADD':'#888780';
+    ctx.lineWidth=d.pfe?1.5:0.5;
+    ctx.stroke();
+  });
+
+  // Labels
+  ctx.textAlign='center';
+  entries.forEach(d=>{
+    if(d.spend<2000) return;
+    const r=rScale(d.spend);
+    let label=d.name.replace('-Oak-San Jose','').replace('Sacramnto-Stkton-Modesto','Sacramento')
+      .replace('Santabarbra-Sanmar-Sanluob','Santa Barbara').replace('Fresno-Visalia','Fresno')
+      .replace('Yuma-El Centro','Yuma');
+    const inside=d.spend>50000;
+    const y=inside?d.y+4:d.y+r+14;
+    ctx.font=`${d.pfe?'600':'400'} ${d.spend>50000?'13':'11'}px -apple-system, system-ui, sans-serif`;
+    ctx.fillStyle=inside?(isDark?'#B5D4F4':'#0C447C'):(isDark?'rgba(255,255,255,0.6)':'#6b6b6b');
+    ctx.fillText(label+' '+fmtK(d.spend), d.x, y);
+  });
+})();
+
+// ─── PFE TABLE ───
+(function(){
+  const tbody=document.getElementById('pfe-table-body');
+  const tfoot=document.getElementById('pfe-table-foot');
+  let totS=0,totR=0,totAS=0;
+  pfeDMANames.forEach(k=>{
+    const d=ytd[k], a=aprMtd[k]||{s:0,r:0};
+    totS+=d.s; totR+=d.r; totAS+=a.s;
+    const rank=Object.entries(ytd).sort((a,b)=>b[1].s-a[1].s).findIndex(e=>e[0]===k)+1;
+    const tr=document.createElement('tr');
+    tr.className='pfe-row';
+    tr.innerHTML=`<td class="dma-name">${pfeLabels[k]} <span class="rank-badge">#${rank} US</span></td>
+      <td class="num">${fmt(d.s)}</td><td class="num">${(d.s/usSpend*100).toFixed(2)}%</td>
+      <td class="num">${d.r.toLocaleString()}</td><td class="num">${(d.r/usReach*100).toFixed(2)}%</td>
+      <td class="num">${fmt(a.s)}</td>`;
+    tbody.appendChild(tr);
+  });
+  tfoot.innerHTML=`<tr>
+    <td class="dma-name">Total PFE DMAs</td>
+    <td class="num">${fmt(totS)}</td><td class="num" style="color:var(--blue)">${(totS/usSpend*100).toFixed(1)}%</td>
+    <td class="num">${totR.toLocaleString()}</td><td class="num" style="color:var(--green)">${(totR/usReach*100).toFixed(1)}%</td>
+    <td class="num">${fmt(totAS)}</td>
+  </tr>`;
+})();
+
+// ─── WOW TABLE ───
+let currentTab='ca';
+function showTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>{if(b.textContent.includes(tab==='ca'?'California':'Top 15'))b.classList.add('active');});
+  renderWow();
+}
+function renderWow(){
+  const tbody=document.getElementById('wow-table-body');
+  tbody.innerHTML='';
+  let rows=[];
+  if(currentTab==='ca'){
+    rows=Object.keys(caDMAs).map(k=>{
+      const w1=l7d[k]||0, w0=(l14d[k]||0)-w1;
+      const chg=w0>0?((w1-w0)/w0*100):0;
+      return {name:k,pfe:caDMAs[k].pfe,w1,w0,chg,mtd:aprMtd[k]?aprMtd[k].s:0,reach:aprMtdReach[k]||0};
+    }).sort((a,b)=>b.mtd-a.mtd);
+  } else {
+    const top15=['Los Angeles','New York','San Francisco-Oak-San Jose','Dallas-Ft. Worth','Tampa-St. Pete (Sarasota)','Philadelphia','Chicago','Denver','Boston (Manchester)','Miami-Ft. Lauderdale','Orlando-Daytona Bch-Melbrn','Houston','Washington, DC (Hagrstwn)','San Diego','Sacramnto-Stkton-Modesto'];
+    rows=top15.map(k=>{
+      const w1=l7d[k]||0, w0=(l14d[k]||0)-w1;
+      const chg=w0>0?((w1-w0)/w0*100):0;
+      const isPfe=caDMAs[k]&&caDMAs[k].pfe;
+      return {name:k,pfe:isPfe,w1,w0,chg,mtd:aprMtd[k]?aprMtd[k].s:0,reach:aprMtdReach[k]||0};
+    });
+  }
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    if(r.pfe) tr.className='pfe-row';
+    const chgClass=r.chg>=0?'change-up':'change-down';
+    const chgStr=(r.chg>=0?'+':'')+Math.round(r.chg)+'%';
+    const badge=r.pfe?'<span class="pfe-badge">PFE</span>':'';
+    const short=r.name.replace('San Francisco-Oak-San Jose','SF-Oakland-San Jose').replace('Sacramnto-Stkton-Modesto','Sacramento').replace('Santabarbra-Sanmar-Sanluob','Santa Barbara').replace('Tampa-St. Pete (Sarasota)','Tampa-St. Pete').replace('Orlando-Daytona Bch-Melbrn','Orlando-Daytona').replace('Washington, DC (Hagrstwn)','Washington DC').replace('Boston (Manchester)','Boston').replace('Minneapolis-St. Paul','Minneapolis');
+    tr.innerHTML=`<td class="dma-name">${short}${badge}</td><td class="num">${fmt(r.w1)}</td><td class="num">${fmt(r.w0)}</td><td class="num ${chgClass}">${chgStr}</td><td class="num">${fmtK(r.mtd)}</td><td class="num">${fmtReach(r.reach)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+renderWow();
+
+// ─── TREND CHART ───
+(function(){
+  const pfeDMAs2=pfeDMANames;
+  const otherCA=Object.keys(caDMAs).filter(k=>!pfeDMAs2.includes(k));
+  function sumG(g,d){return g.reduce((s,k)=>s+(d[k]||0),0);}
+  const pL7=sumG(pfeDMAs2,l7d), pPrior=sumG(pfeDMAs2,l14d)-pL7, pEarly=(sumG(pfeDMAs2,l28d)-sumG(pfeDMAs2,l14d))/2;
+  const oL7=sumG(otherCA,l7d), oPrior=sumG(otherCA,l14d)-oL7, oEarly=(sumG(otherCA,l28d)-sumG(otherCA,l14d))/2;
+
+  const textColor=isDark?'rgba(255,255,255,0.5)':'#888780';
+  const gridColor=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)';
+
+  new Chart(document.getElementById('trendChart'),{
+    type:'bar',
+    data:{
+      labels:['Weeks 1-2 avg (Apr 6-19)','Prior week (Apr 20-26)','Most recent week (Apr 27-May 3)'],
+      datasets:[
+        {label:'PFE DMAs',data:[Math.round(pEarly),Math.round(pPrior),Math.round(pL7)],backgroundColor:'#378ADD',borderRadius:4,barPercentage:0.7},
+        {label:'Other CA',data:[Math.round(oEarly),Math.round(oPrior),Math.round(oL7)],backgroundColor:'#B4B2A9',borderRadius:4,barPercentage:0.7}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:textColor,font:{size:11}}},
+        y:{grid:{color:gridColor},ticks:{color:textColor,callback:v=>'$'+Math.round(v/1000)+'K'}}
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>
