@@ -380,7 +380,7 @@ function renderWow(){
     rows=Object.keys(caDMAs).map(k=>{
       const w1=l7d[k]||0, w0=(l14d[k]||0)-w1;
       const chg=w0>0?((w1-w0)/w0*100):0;
-      return {name:k,pfe:caDMAs[k].pfe,w1,w0,chg,mtd:aprMtd[k]?aprMtd[k].s:0,reach:aprMtdReach[k]||0};
+      return {name:k,pfe:caDMAs[k].pfe,w1,w0,chg,mtd:aprMtd[k]?aprMtd[k].s:0,reach:aprMtd[k]?aprMtd[k].r:0};
     }).sort((a,b)=>b.mtd-a.mtd);
   } else {
     const top15=['Los Angeles','New York','San Francisco-Oak-San Jose','Dallas-Ft. Worth','Tampa-St. Pete (Sarasota)','Philadelphia','Chicago','Denver','Boston (Manchester)','Miami-Ft. Lauderdale','Orlando-Daytona Bch-Melbrn','Houston','Washington, DC (Hagrstwn)','San Diego','Sacramnto-Stkton-Modesto'];
@@ -388,7 +388,7 @@ function renderWow(){
       const w1=l7d[k]||0, w0=(l14d[k]||0)-w1;
       const chg=w0>0?((w1-w0)/w0*100):0;
       const isPfe=caDMAs[k]&&caDMAs[k].pfe;
-      return {name:k,pfe:isPfe,w1,w0,chg,mtd:aprMtd[k]?aprMtd[k].s:0,reach:aprMtdReach[k]||0};
+      return {name:k,pfe:isPfe,w1,w0,chg,mtd:aprMtd[k]?aprMtd[k].s:0,reach:aprMtd[k]?aprMtd[k].r:0};
     });
   }
   rows.forEach(r=>{
