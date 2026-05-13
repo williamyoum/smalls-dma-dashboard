@@ -185,6 +185,20 @@ footer p { margin: 4px 0; }
 <h2>PFE vs other CA DMAs — weekly spend trend</h2>
 <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
 
+<div class="divider"></div>
+
+<!-- PENETRATION INDEX -->
+<h2>Spend vs population — penetration index</h2>
+<p class="subtitle">Index of 100 = spend share matches population share. Above 100 = over-penetrated. Below 100 = under-penetrated. Focused on markets of interest + PFE DMAs.</p>
+<div class="tab-row" id="penTabs">
+  <button class="active" data-pen="moi">Markets of interest</button>
+  <button data-pen="top30">Top 30 US DMAs</button>
+</div>
+<div class="chart-wrap" style="max-width:100%;"><canvas id="penChart" style="max-height:600px;"></canvas></div>
+<div id="penTable" style="overflow-x:auto;margin-top:16px;"></div>
+
+<div class="divider"></div>
+
 <!-- FOOTER -->
 <footer>
 <p>Data source: Meta Ads Manager export. All figures in USD. Reach = estimated unique accounts reached.</p>
@@ -527,6 +541,155 @@ document.getElementById('wowTabs').addEventListener('click',e=>{
         x:{grid:{display:false}}
       }
     }
+  });
+})();
+
+// ========== 7. PENETRATION INDEX ==========
+(function(){
+  const pop={
+'New York':6890000,'Los Angeles':5300000,'Chicago':3270000,'Philadelphia':2800000,
+'Dallas-Ft. Worth':2800000,'San Francisco-Oak-San Jose':2500000,'Washington, DC (Hagrstwn)':2490000,
+'Houston':2470000,'Boston (Manchester)':2380000,'Atlanta':2560000,
+'Tampa-St. Pete (Sarasota)':2030000,'Phoenix (Prescott)':2010000,'Seattle-Tacoma':1980000,
+'Detroit':1740000,'Minneapolis-St. Paul':1790000,'Miami-Ft. Lauderdale':1690000,
+'Denver':1620000,'Orlando-Daytona Bch-Melbrn':1600000,'Cleveland-Akron (Canton)':1440000,
+'Sacramnto-Stkton-Modesto':1390000,'Portland, OR':1190000,'Charlotte':1210000,
+'San Diego':1190000,'Pittsburgh':1120000,'Raleigh-Durham (Fayetvlle)':1200000,
+'Hartford & New Haven':980000,'Indianapolis':1090000,'Austin':1050000,
+'Columbus, OH':960000,'Las Vegas':880000,'St. Louis':1060000,'Milwaukee':910000,
+'West Palm Beach-Ft. Pierce':830000,'Kansas City':930000,'Nashville':990000,
+'Salt Lake City':940000,'Baltimore':1070000,'San Antonio':980000,
+'Grand Rapids-Kalmzoo-B.Crk':750000,'Jacksonville':730000,'Albany-Schenectady-Troy':560000,
+'Buffalo':610000,'Richmond-Petersburg':570000,'Ft. Myers-Naples':560000,
+'Wilkes Barre-Scranton-Hztn':530000,'Louisville':670000,'Spokane':430000,
+'Rochester, NY':380000,'Greensboro-H.Point-W.Salem':680000,'Oklahoma City':730000,
+'Fresno-Visalia':540000,'Flint-Saginaw-Bay City':380000,'Dayton':440000,
+'Toledo':380000,'Youngstown':230000,'Syracuse':430000,'Savannah':350000,
+'Macon':260000,'Augusta-Aiken':330000,'Cincinnati':870000,
+'Santabarbra-Sanmar-Sanluob':310000,'Monterey-Salinas':280000,'Bakersfield':350000,
+'Chico-Redding':250000,'Palm Springs':210000,'Eureka':80000,'Yuma-El Centro':120000,
+'Eugene':280000,'Medford-Klamath Falls':200000,'Bend, OR':130000,
+'Yakima-Pasco-Rchlnd-Knnwck':250000,'Colorado Springs-Pueblo':440000,
+'Grand Junction-Montrose':110000,'Reno':370000,
+'Harrisburg-Lncstr-Leb-York':730000,'Norfolk-Portsmth-Newpt Nws':720000,
+'Greenvll-Spart-Ashevll-And':870000,'Greenville-N.Bern-Washngtn':280000,
+'Wilmington':270000,'Rockford':270000,'Peoria-Bloomington':330000,
+'Champaign&Sprngfld-Decatur':380000,'Traverse City-Cadillac':230000,
+'Lansing':340000,'Marquette':100000,'Waco-Temple-Bryan':370000,
+'El Paso (Las Cruces)':360000,'Harlingen-Wslco-Brnsvl-Mca':360000,
+'Corpus Christi':210000,'Tyler-Longview(Lfkn&Ncgd)':260000,'Lubbock':160000,
+'Amarillo':180000,'Odessa-Midland':170000,'Beaumont-Port Arthur':160000,
+'Sherman-Ada':150000,'Abilene-Sweetwater':110000,'Laredo':110000,
+'Victoria':60000,'San Angelo':70000,'Wichita Falls & Lawton':170000,
+'Tallahassee-Thomasville':280000,'Panama City':180000,'Gainesville':210000,
+'Providence-New Bedford':620000,'Portland-Auburn':420000,
+'Knoxville':570000,'Birmingham (Ann And Tusc)':710000,'New Orleans':630000,
+'Tucson (Sierra Vista)':470000,'Mobile-Pensacola (Ft Walt)':490000,
+'Chattanooga':390000,'Memphis':640000,'Boise':350000,
+'Des Moines-Ames':440000,'Tulsa':530000,'Omaha':430000,
+'Albuquerque-Santa Fe':580000,'Wichita-Hutchinson Plus':400000,
+'Burlington-Plattsburgh':310000,'Madison':420000,'Green Bay-Appleton':430000,
+'Lexington':400000
+  };
+
+  const totalPop=Object.values(pop).reduce((a,b)=>a+b,0);
+  const totalSpend=Object.values(ytd).reduce((a,b)=>a+b.s,0);
+
+  function calcIndex(dmaList){
+    return dmaList.map(k=>{
+      if(!ytd[k]||!pop[k])return null;
+      const spendPct=ytd[k].s/totalSpend*100;
+      const popPct=pop[k]/totalPop*100;
+      const idx=Math.round(spendPct/popPct*100);
+      return {name:k,spend:ytd[k].s,reach:ytd[k].r,pop:pop[k],spendPct,popPct,idx};
+    }).filter(Boolean).sort((a,b)=>b.idx-a.idx);
+  }
+
+  const moiAll=[...new Set([...Object.values(moiEast).flat(),...Object.values(moiWest).flat()])];
+  const top30=Object.entries(ytd).sort((a,b)=>b[1].s-a[1].s).slice(0,30).map(e=>e[0]);
+
+  let penChart=null;
+  function renderPen(dmaList){
+    const data=calcIndex(dmaList);
+    const labels=data.map(d=>{
+      let n=d.name.split('-')[0].split(',')[0].split('(')[0].trim();
+      if(n.length>18)n=n.substring(0,18)+'…';
+      const tag=pfeDMAs.includes(d.name)?' ★':'';
+      return n+tag;
+    });
+    const values=data.map(d=>d.idx);
+    const colors=data.map(d=>{
+      if(pfeDMAs.includes(d.name))return'#378ADD';
+      if(d.idx>=120)return'#2a9d2a';
+      if(d.idx>=80)return'#888780';
+      return'#d35a30';
+    });
+
+    const ctx=document.getElementById('penChart').getContext('2d');
+    const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
+    if(penChart)penChart.destroy();
+    const h=Math.max(350,data.length*22+60);
+    document.getElementById('penChart').style.maxHeight=h+'px';
+    document.getElementById('penChart').parentElement.style.height=h+'px';
+    document.getElementById('penChart').parentElement.style.position='relative';
+
+    penChart=new Chart(ctx,{
+      type:'bar',
+      data:{labels,datasets:[{data:values,backgroundColor:colors,borderRadius:3,barPercentage:0.75}]},
+      options:{
+        indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:function(c){
+            const d=data[c.dataIndex];
+            return `Index: ${d.idx} | Spend: ${fmtK(d.spend)} (${d.spendPct.toFixed(2)}%) | Pop: ${(d.pop/1e6).toFixed(1)}M (${d.popPct.toFixed(2)}%)`;
+          }}}
+        },
+        scales:{
+          x:{grid:{color:'rgba(128,128,128,0.15)'},ticks:{callback:v=>v},
+            title:{display:true,text:'Penetration index (100 = fair share)',color:isDark?'#a1a1a6':'#6e6e73'}},
+          y:{grid:{display:false},ticks:{font:{size:11}}}
+        },
+        annotation:undefined
+      },
+      plugins:[{
+        id:'centerLine',
+        afterDraw(chart){
+          const xScale=chart.scales.x;
+          const x100=xScale.getPixelForValue(100);
+          if(x100){
+            const ctx2=chart.ctx;
+            ctx2.save();
+            ctx2.beginPath();
+            ctx2.setLineDash([4,4]);
+            ctx2.strokeStyle=isDark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.3)';
+            ctx2.lineWidth=1.5;
+            ctx2.moveTo(x100,chart.chartArea.top);
+            ctx2.lineTo(x100,chart.chartArea.bottom);
+            ctx2.stroke();
+            ctx2.restore();
+          }
+        }
+      }]
+    });
+
+    let tbl='<table><thead><tr><th>DMA</th><th>YTD Spend</th><th>% of US Spend</th><th>Population</th><th>% of US Pop</th><th>Index</th><th>Status</th></tr></thead><tbody>';
+    data.forEach(d=>{
+      const tag=pfeDMAs.includes(d.name)?'<span style="color:#378ADD;font-weight:600;margin-left:4px;">PFE</span>':'';
+      const status=d.idx>=120?'<span class="pos">Over</span>':d.idx<=80?'<span class="neg">Under</span>':'Fair';
+      tbl+=`<tr><td style="text-align:left;font-weight:500;">${d.name.split('-')[0].split(',')[0].split('(')[0].trim()}${tag}</td><td>${fmtK(d.spend)}</td><td>${d.spendPct.toFixed(2)}%</td><td>${(d.pop/1e6).toFixed(2)}M</td><td>${d.popPct.toFixed(2)}%</td><td style="font-weight:700;">${d.idx}</td><td>${status}</td></tr>`;
+    });
+    tbl+='</tbody></table>';
+    document.getElementById('penTable').innerHTML=tbl;
+  }
+
+  renderPen(moiAll);
+
+  document.getElementById('penTabs').addEventListener('click',e=>{
+    if(!e.target.matches('button'))return;
+    document.querySelectorAll('#penTabs button').forEach(b=>b.classList.remove('active'));
+    e.target.classList.add('active');
+    renderPen(e.target.dataset.pen==='moi'?moiAll:top30);
   });
 })();
 </script>
