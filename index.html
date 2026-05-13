@@ -187,9 +187,17 @@ footer p { margin: 4px 0; }
 
 <div class="divider"></div>
 
-<!-- PENETRATION INDEX -->
-<h2>Spend vs population — penetration index</h2>
-<p class="subtitle">Index of 100 = spend share matches population share. Above 100 = over-penetrated. Below 100 = under-penetrated. Focused on markets of interest + PFE DMAs.</p>
+<!-- PENETRATION INDEX — BY REGION -->
+<h2>Ad investment index vs population — by region</h2>
+<p class="subtitle">Each state/region's combined ad spend share vs its population share. Index of 100 = fair share. Above = over-investing, below = under-investing relative to market size.</p>
+<div id="regionPenChart" style="margin:16px 0;"></div>
+<div id="regionPenTable" style="overflow-x:auto;margin-top:16px;"></div>
+
+<div class="divider"></div>
+
+<!-- PENETRATION INDEX — FULL DMA LIST -->
+<h2>Ad investment index vs population — all DMAs</h2>
+<p class="subtitle">Individual DMA-level view. Green = over-indexed (120+), gray = fair share (80–120), coral = under-indexed (below 80). ★ = PFE DMA.</p>
 <div class="tab-row" id="penTabs">
   <button class="active" data-pen="moi">Markets of interest</button>
   <button data-pen="top30">Top 30 US DMAs</button>
@@ -544,7 +552,7 @@ document.getElementById('wowTabs').addEventListener('click',e=>{
   });
 })();
 
-// ========== 7. PENETRATION INDEX ==========
+// ========== 7a. REGIONAL PENETRATION INDEX ==========
 (function(){
   const pop={
 'New York':6890000,'Los Angeles':5300000,'Chicago':3270000,'Philadelphia':2800000,
@@ -605,6 +613,128 @@ document.getElementById('wowTabs').addEventListener('click',e=>{
     }).filter(Boolean).sort((a,b)=>b.idx-a.idx);
   }
 
+  // ---- REGIONAL ROLLUP ----
+  const regions=[
+    {region:'East / Central',states:[
+      {name:'Florida',dmas:moiEast['Florida']||[]},
+      {name:'New York',dmas:moiEast['New York']||[]},
+      {name:'Pennsylvania',dmas:moiEast['Pennsylvania']||[]},
+      {name:'Ohio',dmas:moiEast['Ohio']||[]},
+      {name:'Illinois',dmas:moiEast['Illinois']||[]},
+      {name:'Michigan',dmas:moiEast['Michigan']||[]},
+      {name:'North Carolina',dmas:moiEast['North Carolina']||[]},
+      {name:'Georgia',dmas:moiEast['Georgia']||[]},
+      {name:'Texas',dmas:moiEast['Texas']||[]}
+    ]},
+    {region:'West',states:[
+      {name:'California',dmas:moiWest['California']||[]},
+      {name:'Oregon',dmas:moiWest['Oregon']||[]},
+      {name:'Washington',dmas:moiWest['Washington']||[]},
+      {name:'Colorado',dmas:moiWest['Colorado']||[]}
+    ]}
+  ];
+
+  function stateIndex(dmas){
+    let s=0,p=0;
+    dmas.forEach(k=>{s+=(ytd[k]||{}).s||0;p+=pop[k]||0;});
+    const spendPct=s/totalSpend*100;
+    const popPct=p/totalPop*100;
+    return {spend:s,pop:p,spendPct,popPct,idx:popPct>0?Math.round(spendPct/popPct*100):0};
+  }
+
+  // Build regional chart data
+  const regLabels=[],regValues=[],regColors=[],regDetails=[];
+  regions.forEach(rg=>{
+    regLabels.push('── '+rg.region+' ──');
+    regValues.push(null);
+    regColors.push('transparent');
+    regDetails.push(null);
+    rg.states.forEach(st=>{
+      const d=stateIndex(st.dmas);
+      regLabels.push(st.name);
+      regValues.push(d.idx);
+      regColors.push(d.idx>=120?'#2a9d2a':d.idx>=80?'#888780':'#d35a30');
+      regDetails.push(d);
+    });
+  });
+
+  // Render regional bar chart
+  const regCanvas=document.createElement('canvas');
+  regCanvas.style.maxHeight=(regLabels.length*28+60)+'px';
+  const regWrap=document.getElementById('regionPenChart');
+  regWrap.style.position='relative';
+  regWrap.style.height=(regLabels.length*28+60)+'px';
+  regWrap.appendChild(regCanvas);
+  const isDk=matchMedia('(prefers-color-scheme:dark)').matches;
+
+  new Chart(regCanvas.getContext('2d'),{
+    type:'bar',
+    data:{labels:regLabels,datasets:[{data:regValues,backgroundColor:regColors,borderRadius:3,barPercentage:0.7}]},
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{filter:c=>c.raw!==null,callbacks:{label:function(c){
+          const d=regDetails[c.dataIndex];
+          if(!d)return'';
+          return `Index: ${d.idx} | Spend: ${fmtK(d.spend)} (${d.spendPct.toFixed(1)}%) | Pop: ${(d.pop/1e6).toFixed(1)}M (${d.popPct.toFixed(1)}%)`;
+        }}}
+      },
+      scales:{
+        x:{grid:{color:'rgba(128,128,128,0.15)'},ticks:{callback:v=>v},
+          title:{display:true,text:'Penetration index (100 = fair share)',color:isDk?'#a1a1a6':'#6e6e73'},
+          min:0},
+        y:{grid:{display:false},ticks:{font:function(c){
+          const lbl=regLabels[c.index];
+          return lbl&&lbl.startsWith('──')?{size:12,weight:'bold'}:{size:11,weight:'normal'};
+        }}}
+      }
+    },
+    plugins:[{
+      id:'centerLine2',
+      afterDraw(chart){
+        const xScale=chart.scales.x;
+        const x100=xScale.getPixelForValue(100);
+        if(x100){
+          const ctx2=chart.ctx;ctx2.save();
+          ctx2.beginPath();ctx2.setLineDash([4,4]);
+          ctx2.strokeStyle=isDk?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.3)';
+          ctx2.lineWidth=1.5;
+          ctx2.moveTo(x100,chart.chartArea.top);
+          ctx2.lineTo(x100,chart.chartArea.bottom);
+          ctx2.stroke();ctx2.restore();
+        }
+      }
+    }]
+  });
+
+  // Render regional table
+  let rtbl='<table><thead><tr><th>State / Region</th><th>DMAs</th><th>YTD Spend</th><th>% of US Spend</th><th>Population</th><th>% of US Pop</th><th>Index</th><th>Status</th></tr></thead><tbody>';
+  let grandSpend=0,grandPop=0;
+  regions.forEach(rg=>{
+    let rgSpend=0,rgPop=0;
+    rtbl+=`<tr class="region-header"><td colspan="8">${rg.region}</td></tr>`;
+    rg.states.forEach(st=>{
+      const d=stateIndex(st.dmas);
+      rgSpend+=d.spend;rgPop+=d.pop;
+      const status=d.idx>=120?'<span class="pos">Over</span>':d.idx<=80?'<span class="neg">Under</span>':'Fair';
+      const hasPfe=st.dmas.some(k=>pfeDMAs.includes(k))?'<span style="color:#378ADD;font-weight:600;margin-left:4px;">★ PFE</span>':'';
+      rtbl+=`<tr><td style="text-align:left;font-weight:500;">${st.name}${hasPfe}</td><td>${st.dmas.length}</td><td>${fmtK(d.spend)}</td><td>${d.spendPct.toFixed(2)}%</td><td>${(d.pop/1e6).toFixed(1)}M</td><td>${d.popPct.toFixed(2)}%</td><td style="font-weight:700;">${d.idx}</td><td>${status}</td></tr>`;
+    });
+    const rgSpendPct=rgSpend/totalSpend*100;
+    const rgPopPct=rgPop/totalPop*100;
+    const rgIdx=rgPopPct>0?Math.round(rgSpendPct/rgPopPct*100):0;
+    rtbl+=`<tr class="total-row"><td style="text-align:left;">${rg.region} total</td><td></td><td>${fmtK(rgSpend)}</td><td>${rgSpendPct.toFixed(1)}%</td><td>${(rgPop/1e6).toFixed(1)}M</td><td>${rgPopPct.toFixed(1)}%</td><td style="font-weight:700;">${rgIdx}</td><td></td></tr>`;
+    grandSpend+=rgSpend;grandPop+=rgPop;
+  });
+  const gsPct=grandSpend/totalSpend*100;
+  const gpPct=grandPop/totalPop*100;
+  const gIdx=gpPct>0?Math.round(gsPct/gpPct*100):0;
+  rtbl+=`<tr class="total-row" style="font-size:14px;"><td style="text-align:left;">All markets of interest</td><td></td><td>${fmtK(grandSpend)}</td><td>${gsPct.toFixed(1)}%</td><td>${(grandPop/1e6).toFixed(1)}M</td><td>${gpPct.toFixed(1)}%</td><td style="font-weight:700;">${gIdx}</td><td></td></tr>`;
+  rtbl+='</tbody></table>';
+  document.getElementById('regionPenTable').innerHTML=rtbl;
+
+  // ---- FULL DMA LIST (existing) ----
   const moiAll=[...new Set([...Object.values(moiEast).flat(),...Object.values(moiWest).flat()])];
   const top30=Object.entries(ytd).sort((a,b)=>b[1].s-a[1].s).slice(0,30).map(e=>e[0]);
 
