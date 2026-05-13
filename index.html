@@ -3,433 +3,528 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smalls — California DMA Advertising Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<title>Smalls — DMA Advertising Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <style>
+:root {
+  --bg: #ffffff;
+  --bg2: #f5f5f7;
+  --bg3: #e8e8ed;
+  --text: #1d1d1f;
+  --text2: #6e6e73;
+  --border: #d2d2d7;
+  --accent: #378ADD;
+  --coral: #D85A30;
+  --gray-dma: #888780;
+  --card-bg: #ffffff;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --hover: #f0f0f5;
+}
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg: #ffffff; --bg2: #f7f6f3; --bg3: #eeedea;
-    --text: #1a1a1a; --text2: #6b6b6b; --text3: #9a9a96;
-    --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.15);
-    --blue: #378ADD; --blue-bg: #E6F1FB; --blue-text: #0C447C;
-    --green: #1D9E75; --green-bg: #E1F5EE; --green-text: #085041;
-    --coral: #D85A30; --gray400: #888780; --gray200: #B4B2A9;
+    --bg: #1a1a1e;
+    --bg2: #2c2c30;
+    --bg3: #3a3a3e;
+    --text: #f5f5f7;
+    --text2: #a1a1a6;
+    --border: #48484a;
+    --card-bg: #2c2c30;
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    --hover: #3a3a3e;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a1a; --bg2: #242422; --bg3: #2e2e2c;
-      --text: #e8e8e4; --text2: #a0a09a; --text3: #6b6b66;
-      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
-      --blue-bg: #0C447C; --blue-text: #B5D4F4;
-      --green-bg: #085041; --green-text: #9FE1CB;
-    }
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
-  .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
-  .header { margin-bottom: 2.5rem; }
-  .header h1 { font-size: 24px; font-weight: 600; margin-bottom: 4px; }
-  .header p { font-size: 14px; color: var(--text2); }
-  .badge { display: inline-block; background: var(--blue-bg); color: var(--blue-text); font-size: 11px; font-weight: 500; padding: 2px 10px; border-radius: 6px; }
-  .section { margin-bottom: 2.5rem; }
-  .section-title { font-size: 17px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
-  .section-sub { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
-  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
-  .metric-card { background: var(--bg2); border-radius: 10px; padding: 16px; }
-  .metric-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
-  .metric-value { font-size: 26px; font-weight: 600; }
-  .metric-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
-  .accent-blue { color: var(--blue); }
-  .accent-green { color: var(--green); }
-  .ring-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin: 16px 0 8px; }
-  .ring-item { text-align: center; }
-  .ring-label { font-size: 12px; color: var(--text2); margin-top: 6px; }
-  .ring-sublabel { font-size: 11px; color: var(--text3); }
-  .map-container { width: 100%; background: var(--bg2); border-radius: 12px; overflow: hidden; position: relative; }
-  .map-legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 10px 0 4px; font-size: 12px; color: var(--text2); }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 10px 12px; border-bottom: 1.5px solid var(--border2); color: var(--text2); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; }
-  td { padding: 10px 12px; border-bottom: 0.5px solid var(--border); }
-  .num { text-align: right; }
-  .dma-name { font-weight: 500; }
-  .pfe-row { background: rgba(55,138,221,0.04); }
-  .pfe-badge { display: inline-block; background: var(--blue-bg); color: var(--blue-text); font-size: 10px; font-weight: 500; padding: 1px 7px; border-radius: 4px; margin-left: 5px; }
-  .rank-badge { font-size: 11px; color: var(--text3); }
-  tfoot td { font-weight: 600; border-top: 2px solid var(--border2); }
-  .change-up { color: #639922; font-weight: 500; }
-  .change-down { color: #A32D2D; font-weight: 500; }
-  .tab-row { display: flex; gap: 4px; margin-bottom: 12px; }
-  .tab-btn { background: transparent; border: 1px solid var(--border2); border-radius: 8px; padding: 7px 16px; font-size: 13px; cursor: pointer; color: var(--text2); font-family: inherit; transition: all 0.15s; }
-  .tab-btn:hover { background: var(--bg2); }
-  .tab-btn.active { background: var(--bg2); color: var(--text); font-weight: 500; border-color: var(--border2); }
-  .chart-wrap { position: relative; width: 100%; height: 300px; margin: 16px 0; }
-  .chart-legend { display: flex; gap: 16px; font-size: 12px; color: var(--text2); margin-top: 8px; }
-  .chart-legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: middle; }
-  .footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 12px; color: var(--text3); }
-  .divider { height: 1px; background: var(--border); margin: 2rem 0; }
-  @media (max-width: 640px) {
-    .container { padding: 1.5rem 1rem 3rem; }
-    .metric-grid { grid-template-columns: 1fr 1fr; }
-    .ring-row { gap: 12px; }
-    table { font-size: 12px; }
-    th, td { padding: 8px 6px; }
-  }
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  padding: 24px 16px;
+}
+.wrap { max-width: 960px; margin: 0 auto; }
+h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+h2 { font-size: 20px; font-weight: 600; margin: 32px 0 8px; }
+h3 { font-size: 16px; font-weight: 600; margin: 20px 0 6px; }
+.subtitle { color: var(--text2); font-size: 14px; margin-top: 4px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--card-shadow);
+}
+.card .label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+.card .val { font-size: 28px; font-weight: 700; margin: 4px 0; }
+.card .detail { font-size: 13px; color: var(--text2); }
+.rings-wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin: 16px 0; }
+.ring-item { text-align: center; width: 180px; }
+.ring-item canvas { display: block; margin: 0 auto; }
+.ring-item .ring-label { font-size: 13px; color: var(--text2); margin-top: 4px; }
+.ring-item .ring-val { font-size: 18px; font-weight: 700; }
+
+.map-container { margin: 20px 0; position: relative; }
+.map-toggle { display: flex; gap: 4px; margin-bottom: 8px; }
+.map-toggle button {
+  padding: 6px 16px; border: 1px solid var(--border); background: var(--card-bg);
+  color: var(--text); border-radius: 8px; cursor: pointer; font-size: 13px; font-family: inherit;
+}
+.map-toggle button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.map-svg { width: 100%; border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); overflow: hidden; }
+.tooltip {
+  position: absolute; pointer-events: none; background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 12px; font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 10; opacity: 0; transition: opacity 0.15s; white-space: nowrap;
+}
+.tooltip.show { opacity: 1; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0 24px; }
+th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+th { font-weight: 600; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.3px; background: var(--bg2); position: sticky; top: 0; }
+th:first-child, td:first-child { text-align: left; }
+tr.total-row { font-weight: 700; background: var(--bg2); }
+tr.total-row td { border-top: 2px solid var(--text2); }
+tr.group-header { cursor: pointer; background: var(--bg2); font-weight: 600; }
+tr.group-header:hover { background: var(--hover); }
+tr.sub-row td:first-child { padding-left: 28px; font-weight: 400; color: var(--text2); }
+tr.sub-row { display: none; }
+tr.sub-row.open { display: table-row; }
+tr.region-header { font-weight: 700; background: var(--bg3); }
+tr.region-header td { font-size: 13px; letter-spacing: 0.3px; }
+
+.tab-row { display: flex; gap: 4px; margin: 12px 0; }
+.tab-row button {
+  padding: 6px 16px; border: 1px solid var(--border); background: var(--card-bg);
+  color: var(--text); border-radius: 8px; cursor: pointer; font-size: 13px; font-family: inherit;
+}
+.tab-row button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.chart-wrap { margin: 16px 0; max-width: 700px; }
+.chart-wrap canvas { max-height: 350px; }
+
+footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text2); }
+footer p { margin: 4px 0; }
+.legend-row { display: flex; gap: 16px; align-items: center; font-size: 13px; margin: 8px 0; flex-wrap: wrap; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+.neg { color: #d33; }
+.pos { color: #2a2; }
+@media (prefers-color-scheme: dark) { .pos { color: #5c5; } .neg { color: #f66; } }
+.divider { height: 1px; background: var(--border); margin: 2rem 0; }
+@media (max-width: 640px) {
+  .cards { grid-template-columns: 1fr 1fr; }
+  table { font-size: 12px; }
+  th, td { padding: 6px 5px; }
+}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="wrap">
 
-<div class="header">
-  <h1>Smalls — California DMA advertising dashboard</h1>
-  <p>Meta spend &amp; reach by DMA · YTD 2026 (Jan 1 – May 4) · Focus: Pet Food Express markets</p>
-</div>
+<!-- HEADER -->
+<header>
+<h1>Smalls — DMA advertising dashboard</h1>
+<p class="subtitle">Meta spend &amp; reach by DMA &middot; YTD 2026 (Jan 1 &ndash; May 4)</p>
+</header>
 
 <!-- TOP METRICS -->
-<div class="section">
-  <div class="metric-grid" id="top-metrics"></div>
-</div>
+<div class="cards" id="topCards"></div>
 
 <!-- PFE SHARE RINGS -->
-<div class="section">
-  <p class="section-title">PFE DMA share of total US</p>
-  <p class="section-sub">How much of our national spend and reach is going to the 6 DMAs where Pet Food Express operates</p>
-  <div class="ring-row" id="rings"></div>
+<h2>PFE DMA share of US</h2>
+<div class="rings-wrap" id="rings"></div>
+
+<div class="divider"></div>
+
+<!-- US MAP -->
+<h2>US-wide DMA spend map</h2>
+<div class="legend-row">
+  <span><span class="legend-dot" style="background:#378ADD"></span>PFE DMAs</span>
+  <span><span class="legend-dot" style="background:#D85A30"></span>Markets of interest</span>
+  <span><span class="legend-dot" style="background:#888780"></span>Other DMAs</span>
+</div>
+<div class="map-container">
+  <div class="map-toggle" id="mapToggle">
+    <button class="active" data-view="us">Full US</button>
+    <button data-view="ca">California</button>
+    <button data-view="moi">Markets of interest</button>
+  </div>
+  <p style="font-size:11px;color:var(--text2);margin:4px 0 8px;">Scroll to zoom · Drag to pan · Click a preset above to jump to a view</p>
+  <div id="mapWrap"></div>
+  <div class="tooltip" id="mapTooltip"></div>
 </div>
 
 <div class="divider"></div>
 
-<!-- CALIFORNIA MAP -->
-<div class="section">
-  <p class="section-title">California DMA spend map</p>
-  <div class="map-legend">
-    <span class="legend-item"><span class="legend-dot" style="background:#378ADD;"></span> PFE store DMA</span>
-    <span class="legend-item"><span class="legend-dot" style="background:#888780;"></span> Other California DMA</span>
-    <span style="font-size:11px; color:var(--text3);">Bubble size = YTD spend</span>
-  </div>
-  <div class="map-container" id="map-container"></div>
-</div>
+<!-- MARKETS OF INTEREST -->
+<h2>Markets of interest</h2>
+<p class="subtitle">Key retail expansion markets — East/Central and West regions</p>
+<div id="moiTable" style="overflow-x:auto;"></div>
 
 <div class="divider"></div>
 
-<!-- PFE DMA BREAKDOWN TABLE -->
-<div class="section">
-  <p class="section-title">PFE DMA breakdown</p>
-  <p class="section-sub">Individual markets where Pet Food Express has retail locations</p>
-  <div style="overflow-x:auto;">
-    <table>
-      <thead><tr>
-        <th>DMA</th><th class="num">YTD spend</th><th class="num">% of US spend</th>
-        <th class="num">YTD reach</th><th class="num">% of US reach</th>
-        <th class="num">Apr MTD spend</th>
-      </tr></thead>
-      <tbody id="pfe-table-body"></tbody>
-      <tfoot id="pfe-table-foot"></tfoot>
-    </table>
-  </div>
-</div>
+<!-- PFE DMA BREAKDOWN -->
+<h2>PFE DMA breakdown</h2>
+<div id="pfeTable" style="overflow-x:auto;"></div>
 
 <div class="divider"></div>
 
 <!-- WEEK OVER WEEK -->
-<div class="section">
-  <p class="section-title">Week-over-week spend comparison</p>
-  <p class="section-sub">"Most recent week" = Apr 27–May 3 (the week Pet Food Express had their biggest sales week ever). "Prior week" = Apr 20–26.</p>
-  <div class="tab-row">
-    <button class="tab-btn active" onclick="showTab('ca')">California DMAs</button>
-    <button class="tab-btn" onclick="showTab('top')">Top 15 US DMAs</button>
-  </div>
-  <div style="overflow-x:auto;">
-    <table>
-      <thead><tr>
-        <th>DMA</th><th class="num">Most recent week</th><th class="num">Prior week</th>
-        <th class="num">WoW change</th><th class="num">MTD spend</th><th class="num">MTD reach</th>
-      </tr></thead>
-      <tbody id="wow-table-body"></tbody>
-    </table>
-  </div>
+<h2>Week-over-week spend comparison</h2>
+<p class="subtitle">Most recent week = Apr 27 &ndash; May 3 &middot; Prior week = Apr 20 &ndash; 26</p>
+<div class="tab-row" id="wowTabs">
+  <button class="active" data-tab="ca">California DMAs</button>
+  <button data-tab="top15">Top 15 US DMAs</button>
 </div>
+<div id="wowTable" style="overflow-x:auto;"></div>
 
 <div class="divider"></div>
 
-<!-- TREND CHART -->
-<div class="section">
-  <p class="section-title">PFE DMAs vs other California — weekly spend trend</p>
-  <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
-  <div class="chart-legend">
-    <span><span class="chart-legend-dot" style="background:#378ADD;"></span> PFE DMAs</span>
-    <span><span class="chart-legend-dot" style="background:#B4B2A9;"></span> Other California DMAs</span>
-  </div>
-</div>
+<!-- PFE vs OTHER CA TREND -->
+<h2>PFE vs other CA DMAs — weekly spend trend</h2>
+<div class="chart-wrap"><canvas id="trendChart"></canvas></div>
 
-<div class="footer">
-  <p>Data source: Meta Ads Manager · Spend by DMA exports · Attribution: 7-day click</p>
-  <p>PFE DMAs = SF-Oakland-San Jose, Sacramento-Stockton-Modesto, Fresno-Visalia, Monterey-Salinas, Chico-Redding, Eureka</p>
-  <p style="margin-top:8px;">Generated May 2026 · Smalls internal use</p>
-</div>
+<!-- FOOTER -->
+<footer>
+<p>Data source: Meta Ads Manager export. All figures in USD. Reach = estimated unique accounts reached.</p>
+<p>PFE DMAs: San Francisco-Oakland-San Jose, Sacramento-Stockton-Modesto, Fresno-Visalia, Monterey-Salinas, Chico-Redding, Eureka.</p>
+<p>Generated May 12, 2026.</p>
+</footer>
 
 </div>
 
 <script>
-const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
-
-// ─── DATA ───
-const pfeDMANames = ['San Francisco-Oak-San Jose','Sacramnto-Stkton-Modesto','Fresno-Visalia','Monterey-Salinas','Chico-Redding','Eureka'];
-const pfeLabels = {'San Francisco-Oak-San Jose':'SF-Oakland-San Jose','Sacramnto-Stkton-Modesto':'Sacramento-Stockton-Modesto','Fresno-Visalia':'Fresno-Visalia','Monterey-Salinas':'Monterey-Salinas','Chico-Redding':'Chico-Redding','Eureka':'Eureka'};
-
-const caDMAs = {
-  'Los Angeles':{lat:34.05,lng:-118.24,pfe:false},
-  'San Francisco-Oak-San Jose':{lat:37.77,lng:-122.20,pfe:true},
-  'San Diego':{lat:32.72,lng:-117.16,pfe:false},
-  'Sacramnto-Stkton-Modesto':{lat:38.58,lng:-121.49,pfe:true},
-  'Fresno-Visalia':{lat:36.74,lng:-119.77,pfe:true},
-  'Santabarbra-Sanmar-Sanluob':{lat:34.42,lng:-119.70,pfe:false},
-  'Monterey-Salinas':{lat:36.67,lng:-121.66,pfe:true},
-  'Bakersfield':{lat:35.37,lng:-119.02,pfe:false},
-  'Chico-Redding':{lat:40.59,lng:-122.39,pfe:true},
-  'Palm Springs':{lat:33.83,lng:-116.55,pfe:false},
-  'Eureka':{lat:40.80,lng:-124.16,pfe:true},
-  'Yuma-El Centro':{lat:32.73,lng:-115.51,pfe:false},
-  'Reno':{lat:39.53,lng:-119.81,pfe:false}
+// ========== DATA ==========
+const ytd={
+'New York':{s:585808.68,r:2089288},'Los Angeles':{s:447208.08,r:1736977},'Chicago':{s:219990.77,r:761976},'Philadelphia':{s:204313.94,r:888972},'Boston (Manchester)':{s:201487.06,r:770169},'San Francisco-Oak-San Jose':{s:189623.01,r:614497},'Seattle-Tacoma':{s:173260.75,r:630883},'Washington, DC (Hagrstwn)':{s:153206.57,r:651366},'Atlanta':{s:152807.18,r:569433},'Phoenix (Prescott)':{s:144927.04,r:663656},'Dallas-Ft. Worth':{s:142259.36,r:651366},'Tampa-St. Pete (Sarasota)':{s:133402.70,r:503887},'Denver':{s:122214.92,r:438341},'Orlando-Daytona Bch-Melbrn':{s:118871.99,r:417858},'Miami-Ft. Lauderdale':{s:115840.22,r:385085},'Detroit':{s:114906.34,r:401471},'Houston':{s:108712.44,r:520274},'Portland, OR':{s:95652.66,r:458824},'San Diego':{s:91241.49,r:319538},'Cleveland-Akron (Canton)':{s:90655.46,r:360505},'Sacramnto-Stkton-Modesto':{s:89609.96,r:413761},'Minneapolis-St. Paul':{s:83511.29,r:340021},'Charlotte':{s:78006.90,r:221219},'Salt Lake City':{s:77809.56,r:368698},'Nashville':{s:68345.43,r:221219},'Pittsburgh':{s:67546.66,r:221219},'Raleigh-Durham (Fayetvlle)':{s:67328.78,r:307248},'Hartford & New Haven':{s:65208.46,r:270378},'Indianapolis':{s:65157.12,r:249895},'Austin':{s:64649.74,r:286765},'Columbus, OH':{s:59708.17,r:270378},'Las Vegas':{s:59099.97,r:225315},'St. Louis':{s:58823.06,r:196639},'Milwaukee':{s:57497.80,r:225315},'West Palm Beach-Ft. Pierce':{s:57229.16,r:180252},'Kansas City':{s:56427.09,r:229412},'Greenvll-Spart-Ashevll-And':{s:54933.52,r:221219},'Baltimore':{s:52464.32,r:274475},'Harrisburg-Lncstr-Leb-York':{s:50575.01,r:176156},'Cincinnati':{s:48286.83,r:192542},'Norfolk-Portsmth-Newpt Nws':{s:47190.86,r:188446},'San Antonio':{s:46705.27,r:172059},'Grand Rapids-Kalmzoo-B.Crk':{s:44794.96,r:225315},'Jacksonville':{s:44359.62,r:147479},'Albany-Schenectady-Troy':{s:43658.67,r:151576},'Portland-Auburn':{s:39851.48,r:131093},'Providence-New Bedford':{s:39709.41,r:172059},'Buffalo':{s:39004.78,r:172059},'Richmond-Petersburg':{s:38208.93,r:159769},'Ft. Myers-Naples':{s:38159.05,r:86030},'Wilkes Barre-Scranton-Hztn':{s:35486.16,r:139286},'Albuquerque-Santa Fe':{s:34285.47,r:155672},'Louisville':{s:33717.17,r:163866},'Greensboro-H.Point-W.Salem':{s:32718.87,r:151576},'Oklahoma City':{s:31845.94,r:176156},'Spokane':{s:30554.92,r:90126},'Rochester, NY':{s:27853.28,r:86030},'Charleston, SC':{s:27463.50,r:118803},'Knoxville':{s:27371.66,r:98319},'Green Bay-Appleton':{s:26678.23,r:114706},'Burlington-Plattsburgh':{s:26648.26,r:81933},'New Orleans':{s:26444.51,r:122899},'Madison':{s:26035.29,r:135189},'Tucson (Sierra Vista)':{s:25514.63,r:73740},'Mobile-Pensacola (Ft Walt)':{s:25347.29,r:102416},'Syracuse':{s:25028.15,r:122899},'Birmingham (Ann And Tusc)':{s:24983.10,r:106513},'Fresno-Visalia':{s:24903.88,r:139286},'Boise':{s:24858.48,r:90126},'Des Moines-Ames':{s:24172.65,r:118803},'Dayton':{s:23924.90,r:106513},'Savannah':{s:23025.72,r:98319},'Tulsa':{s:22203.32,r:118803},'Reno':{s:21731.25,r:106513},'Flint-Saginaw-Bay City':{s:21130.96,r:65546},'Toledo':{s:20799.30,r:73740},'Colorado Springs-Pueblo':{s:20720.31,r:135189},'Springfield-Holyoke':{s:20559.22,r:77836},'Roanoke-Lynchburg':{s:20403.65,r:77836},'Lexington':{s:19849.79,r:102416},'Chattanooga':{s:19304.22,r:86030},'Wichita-Hutchinson Plus':{s:19092.74,r:98319},'Omaha':{s:18518.53,r:81933},'Santabarbra-Sanmar-Sanluob':{s:18281.42,r:53256},'Memphis':{s:18113.62,r:77836},'Springfield, MO':{s:18076.63,r:65546},'Columbia, SC':{s:17899.96,r:65546},'Little Rock-Pine Bluff':{s:17763.90,r:86030},'Cedar Rapids-Wtrlo-Iwc&Dub':{s:17479.52,r:86030},'Champaign&Sprngfld-Decatur':{s:16687.51,r:94223},'Monterey-Salinas':{s:16601.97,r:110609},'Huntsville-Decatur (Flor)':{s:16534.37,r:61450},'Ft. Smith-Fay-Sprngdl-Rgrs':{s:16409.36,r:77836},'South Bend-Elkhart':{s:16382.56,r:81933},'Wilmington':{s:16189.32,r:49160},'Myrtle Beach-Florence':{s:16049.81,r:61450},'Lansing':{s:14763.51,r:73740},'Ft. Wayne':{s:14593.36,r:45063},'Eugene':{s:14580.02,r:73740},'Charleston-Huntington':{s:14474.52,r:61450},'Greenville-N.Bern-Washngtn':{s:14352.64,r:57353},'Yakima-Pasco-Rchlnd-Knnwck':{s:13683.41,r:65546},'Traverse City-Cadillac':{s:13606.20,r:45063},'Davenport-R.Island-Moline':{s:13317.01,r:65546},'Tri-Cities, TN-VA':{s:13157.06,r:65546},'Waco-Temple-Bryan':{s:13089.61,r:102416},'Peoria-Bloomington':{s:12800.60,r:40966},'Johnstown-Altoona-St Colge':{s:12768.39,r:57353},'Sioux Falls(Mitchell)':{s:12239.82,r:45063},'Youngstown':{s:12198.06,r:61450},'Paducah-Cape Girard-Harsbg':{s:11909.82,r:53256},'El Paso (Las Cruces)':{s:11886.24,r:69643},'Baton Rouge':{s:11135.57,r:53256},'Fargo-Valley City':{s:11071.94,r:45063},'Bangor':{s:11003.06,r:49160},'La Crosse-Eau Claire':{s:10976.90,r:45063},'Palm Springs':{s:10602.94,r:36870},'Tallahassee-Thomasville':{s:10475.61,r:49160},'Augusta-Aiken':{s:10438.54,r:40966},'Evansville':{s:10167.90,r:57353},'Bakersfield':{s:10078.21,r:57353},'Lincoln & Hastings-Krny':{s:9714.05,r:57353},'Chico-Redding':{s:9692.73,r:45063},'Rockford':{s:9448.01,r:45063},'Medford-Klamath Falls':{s:9405.28,r:40966},'Wausau-Rhinelander':{s:9004.41,r:20483},'Shreveport':{s:8903.90,r:16387},'Harlingen-Wslco-Brnsvl-Mca':{s:8899.78,r:65546},'Macon':{s:8780.98,r:20483},'Minot-Bsmrck-Dcknsn(Wlstn)':{s:8371.08,r:28677},'Columbia-Jefferson City':{s:8279.79,r:32773},'Salisbury':{s:8183.73,r:32773},'Binghamton':{s:8165.13,r:49160},'Panama City':{s:7899.89,r:36870},'Erie':{s:7877.28,r:32773},'Gainesville':{s:7721.56,r:45063},'Columbus, GA (Opelika, Al)':{s:7445.66,r:32773},'Idaho Fals-Pocatllo(Jcksn)':{s:7388.46,r:32773},'Tyler-Longview(Lfkn&Ncgd)':{s:7318.25,r:36870},'Topeka':{s:7236.44,r:16387},'Corpus Christi':{s:6898.31,r:45063},'Duluth-Superior':{s:6750.85,r:40966},'Lafayette, LA':{s:6623.83,r:28677},'Missoula':{s:6584.41,r:24580},'Jackson, MS':{s:6500.14,r:8193},'Harrisonburg':{s:6005.46,r:32773},'Rapid City':{s:5906.93,r:24580},'Utica':{s:5904.23,r:40966},'Rochester-Mason City-Austin':{s:5850.66,r:24580},'Bend, OR':{s:5735.51,r:32773},'Joplin-Pittsburg':{s:5701.48,r:28677},'Charlottesville':{s:5661.27,r:20483},'Montgomery-Selma':{s:5584.72,r:24580},'Terre Haute':{s:5419.38,r:20483},'Sioux City':{s:5280.10,r:32773},'Biloxi-Gulfport':{s:5227.93,r:20483},'Wheeling-Steubenville':{s:5164.40,r:32773},'Billings':{s:5104.16,r:28677},'Elmira (Corning)':{s:5090.96,r:36870},'Watertown':{s:5052.55,r:24580},'Odessa-Midland':{s:4785.93,r:20483},'Amarillo':{s:4747.40,r:36870},'Yuma-El Centro':{s:4721.47,r:28677},'Butte-Bozeman':{s:4578.86,r:4097},'Wichita Falls & Lawton':{s:4556.06,r:20483},'Lubbock':{s:4550.24,r:16387},'Sherman-Ada':{s:4357.60,r:12290},'Marquette':{s:4323.28,r:32773},'Clarksburg-Weston':{s:4039.85,r:28677},'Grand Junction-Montrose':{s:3970.33,r:12290},'Beaumont-Port Arthur':{s:3655.25,r:12290},'Eureka':{s:3558.42,r:28677},'Abilene-Sweetwater':{s:2954.83,r:4097},'Laredo':{s:1660.08,r:8193},'Victoria':{s:906.82,r:4097},'San Angelo':{s:1633.57,r:12290}
 };
 
-// YTD data (Jan 1 - May 4, 2026)
-const ytd = {
-'New York':{s:585808.68,r:2089288},'Los Angeles':{s:447208.08,r:1736977},'Chicago':{s:219990.77,r:761976},'Philadelphia':{s:204313.94,r:888972},'Boston (Manchester)':{s:201487.06,r:770169},'San Francisco-Oak-San Jose':{s:189623.01,r:614497},'Seattle-Tacoma':{s:173260.75,r:630883},'Washington, DC (Hagrstwn)':{s:153206.57,r:651366},'Atlanta':{s:152807.18,r:569433},'Phoenix (Prescott)':{s:144927.04,r:663656},'Dallas-Ft. Worth':{s:142259.36,r:651366},'Tampa-St. Pete (Sarasota)':{s:133402.70,r:503887},'Denver':{s:122214.92,r:438341},'Orlando-Daytona Bch-Melbrn':{s:118871.99,r:417858},'Miami-Ft. Lauderdale':{s:115840.22,r:385085},'Detroit':{s:114906.34,r:401471},'Houston':{s:108712.44,r:520274},'Portland, OR':{s:95652.66,r:458824},'San Diego':{s:91241.49,r:319538},'Cleveland-Akron (Canton)':{s:90655.46,r:360505},'Sacramnto-Stkton-Modesto':{s:89609.96,r:413761},'Minneapolis-St. Paul':{s:83511.29,r:340021},'Charlotte':{s:78006.90,r:221219},'Salt Lake City':{s:77809.56,r:368698},'Nashville':{s:68345.43,r:221219},'Pittsburgh':{s:67546.66,r:221219},'Raleigh-Durham (Fayetvlle)':{s:67328.78,r:307248},'Hartford & New Haven':{s:65208.46,r:270378},'Indianapolis':{s:65157.12,r:249895},'Austin':{s:64649.74,r:286765},'Columbus, OH':{s:59708.17,r:270378},'Las Vegas':{s:59099.97,r:225315},'St. Louis':{s:58823.06,r:196639},'Milwaukee':{s:57497.80,r:225315},'West Palm Beach-Ft. Pierce':{s:57229.16,r:180252},'Kansas City':{s:56427.09,r:229412},'Greenvll-Spart-Ashevll-And':{s:54933.52,r:221219},'Baltimore':{s:52464.32,r:274475},'Harrisburg-Lncstr-Leb-York':{s:50575.01,r:176156},'Cincinnati':{s:48286.83,r:192542},'Norfolk-Portsmth-Newpt Nws':{s:47190.86,r:188446},'San Antonio':{s:46705.27,r:172059},'Grand Rapids-Kalmzoo-B.Crk':{s:44794.96,r:225315},'Jacksonville':{s:44359.62,r:147479},'Albany-Schenectady-Troy':{s:43658.67,r:151576},'Portland-Auburn':{s:39851.48,r:131093},'Providence-New Bedford':{s:39709.41,r:172059},'Buffalo':{s:39004.78,r:172059},'Richmond-Petersburg':{s:38208.93,r:159769},'Ft. Myers-Naples':{s:38159.05,r:86030},'Wilkes Barre-Scranton-Hztn':{s:35486.16,r:139286},'Albuquerque-Santa Fe':{s:34285.47,r:155672},'Louisville':{s:33717.17,r:163866},'Greensboro-H.Point-W.Salem':{s:32718.87,r:151576},'Oklahoma City':{s:31845.94,r:176156},'Spokane':{s:30554.92,r:90126},'Rochester, NY':{s:27853.28,r:86030},'Charleston, SC':{s:27463.50,r:118803},'Knoxville':{s:27371.66,r:98319},'Green Bay-Appleton':{s:26678.23,r:114706},'Burlington-Plattsburgh':{s:26648.26,r:81933},'New Orleans':{s:26444.51,r:122899},'Madison':{s:26035.29,r:135189},'Tucson (Sierra Vista)':{s:25514.63,r:73740},'Mobile-Pensacola (Ft Walt)':{s:25347.29,r:102416},'Syracuse':{s:25028.15,r:122899},'Birmingham (Ann And Tusc)':{s:24983.10,r:106513},'Fresno-Visalia':{s:24903.88,r:139286},'Boise':{s:24858.48,r:90126},'Des Moines-Ames':{s:24172.65,r:118803},'Dayton':{s:23924.90,r:106513},'Savannah':{s:23025.72,r:98319},'Tulsa':{s:22203.32,r:118803},'Reno':{s:21731.25,r:106513},'Flint-Saginaw-Bay City':{s:21130.96,r:65546},'Toledo':{s:20799.30,r:73740},'Colorado Springs-Pueblo':{s:20720.31,r:135189},'Springfield-Holyoke':{s:20559.22,r:77836},'Roanoke-Lynchburg':{s:20403.65,r:77836},'Lexington':{s:19849.79,r:102416},'Chattanooga':{s:19304.22,r:86030},'Wichita-Hutchinson Plus':{s:19092.74,r:98319},'Omaha':{s:18518.53,r:81933},'Santabarbra-Sanmar-Sanluob':{s:18281.42,r:53256},'Memphis':{s:18113.62,r:77836},'Springfield, MO':{s:18076.63,r:65546},'Columbia, SC':{s:17899.96,r:65546},'Little Rock-Pine Bluff':{s:17763.90,r:86030},'Cedar Rapids-Wtrlo-Iwc&Dub':{s:17479.52,r:86030},'Champaign&Sprngfld-Decatur':{s:16687.51,r:94223},'Monterey-Salinas':{s:16601.97,r:110609},'Huntsville-Decatur (Flor)':{s:16534.37,r:61450},'Ft. Smith-Fay-Sprngdl-Rgrs':{s:16409.36,r:77836},'South Bend-Elkhart':{s:16382.56,r:81933},'Wilmington':{s:16189.32,r:49160},'Myrtle Beach-Florence':{s:16049.81,r:61450},'Lansing':{s:14763.51,r:73740},'Ft. Wayne':{s:14593.36,r:45063},'Eugene':{s:14580.02,r:73740},'Charleston-Huntington':{s:14474.52,r:61450},'Greenville-N.Bern-Washngtn':{s:14352.64,r:57353},'Yakima-Pasco-Rchlnd-Knnwck':{s:13683.41,r:65546},'Traverse City-Cadillac':{s:13606.20,r:45063},'Davenport-R.Island-Moline':{s:13317.01,r:65546},'Tri-Cities, TN-VA':{s:13157.06,r:65546},'Waco-Temple-Bryan':{s:13089.61,r:102416},'Peoria-Bloomington':{s:12800.60,r:40966},'Johnstown-Altoona-St Colge':{s:12768.39,r:57353},'Sioux Falls(Mitchell)':{s:12239.82,r:45063},'Youngstown':{s:12198.06,r:61450},'Paducah-Cape Girard-Harsbg':{s:11909.82,r:53256},'El Paso (Las Cruces)':{s:11886.24,r:69643},'Baton Rouge':{s:11135.57,r:53256},'Fargo-Valley City':{s:11071.94,r:45063},'Bangor':{s:11003.06,r:49160},'La Crosse-Eau Claire':{s:10976.90,r:45063},'Palm Springs':{s:10602.94,r:36870},'Tallahassee-Thomasville':{s:10475.61,r:49160},'Augusta-Aiken':{s:10438.54,r:40966},'Evansville':{s:10167.90,r:57353},'Bakersfield':{s:10078.21,r:57353},'Lincoln & Hastings-Krny':{s:9714.05,r:57353},'Chico-Redding':{s:9692.73,r:45063},'Rockford':{s:9448.01,r:45063},'Medford-Klamath Falls':{s:9405.28,r:40966},'Wausau-Rhinelander':{s:9004.41,r:20483},'Shreveport':{s:8903.90,r:16387},'Harlingen-Wslco-Brnsvl-Mca':{s:8899.78,r:65546},'Macon':{s:8780.98,r:20483},'Minot-Bsmrck-Dcknsn(Wlstn)':{s:8371.08,r:28677},'Columbia-Jefferson City':{s:8279.79,r:32773},'Salisbury':{s:8183.73,r:32773},'Binghamton':{s:8165.13,r:49160},'Panama City':{s:7899.89,r:36870},'Erie':{s:7877.28,r:32773},'Gainesville':{s:7721.56,r:45063},'Columbus, GA (Opelika, Al)':{s:7445.66,r:32773},'Idaho Fals-Pocatllo(Jcksn)':{s:7388.46,r:32773},'Tyler-Longview(Lfkn&Ncgd)':{s:7318.25,r:36870},'Topeka':{s:7236.44,r:16387},'Corpus Christi':{s:6898.31,r:45063},'Duluth-Superior':{s:6750.85,r:40966},'Lafayette, LA':{s:6623.83,r:28677},'Missoula':{s:6584.41,r:24580},'Jackson, MS':{s:6500.14,r:8193},'Harrisonburg':{s:6005.46,r:32773},'Rapid City':{s:5906.93,r:24580},'Utica':{s:5904.23,r:40966},'Rochester-Mason City-Austin':{s:5850.66,r:24580},'Bend, OR':{s:5735.51,r:32773},'Joplin-Pittsburg':{s:5701.48,r:28677},'Charlottesville':{s:5661.27,r:20483},'Montgomery-Selma':{s:5584.72,r:24580},'Terre Haute':{s:5419.38,r:20483},'Sioux City':{s:5280.10,r:32773},'Biloxi-Gulfport':{s:5227.93,r:20483},'Wheeling-Steubenville':{s:5164.40,r:32773},'Unknown':{s:5132.65,r:28677},'Billings':{s:5104.16,r:28677},'Elmira (Corning)':{s:5090.96,r:36870},'Watertown':{s:5052.55,r:24580},'Odessa-Midland':{s:4785.93,r:20483},'Amarillo':{s:4747.40,r:36870},'Yuma-El Centro':{s:4721.47,r:28677},'Butte-Bozeman':{s:4578.86,r:4097},'Wichita Falls & Lawton':{s:4556.06,r:20483},'Lubbock':{s:4550.24,r:16387},'Sherman-Ada':{s:4357.60,r:12290},'Marquette':{s:4323.28,r:32773},'Clarksburg-Weston':{s:4039.85,r:28677},'Lafayette, IN':{s:3995.77,r:0},'Grand Junction-Montrose':{s:3970.33,r:12290},'Beaumont-Port Arthur':{s:3655.25,r:12290},'Eureka':{s:3558.42,r:28677},'Bluefield-Beckley-Oak Hill':{s:3533.58,r:28677},'Bowling Green':{s:3393.48,r:16387},'Quincy-Hannibal-Keokuk':{s:3389.20,r:4097},'Twin Falls':{s:3349.85,r:12290},'Columbus-Tupelo-W Pnt-Hstn':{s:3349.04,r:12290},'Albany, GA':{s:3285.36,r:4097},'Monroe-El Dorado':{s:3277.44,r:16387},'Dothan':{s:3192.76,r:4097},'Abilene-Sweetwater':{s:2954.83,r:4097},'Casper-Riverton':{s:2939.03,r:4097},'Lake Charles':{s:2637.11,r:8193},'Hattiesburg-Laurel':{s:2616.50,r:12290},'Parkersburg':{s:2607.75,r:4097},'Jackson, TN':{s:2475.28,r:12290},'Lima':{s:2370.53,r:12290},'Great Falls':{s:2267.24,r:8193},'Jonesboro':{s:2239.56,r:12290},'Alexandria, LA':{s:1944.91,r:4097},'St. Joseph':{s:1874.90,r:12290},'Mankato':{s:1831.16,r:8193},'Laredo':{s:1660.08,r:8193},'San Angelo':{s:1633.57,r:12290},'Presque Isle':{s:1616.14,r:0},'Ottumwa-Kirksville':{s:1592.32,r:4097},'Helena':{s:1547.84,r:16387},'Zanesville':{s:1304.60,r:4097},'Meridian':{s:956.11,r:0},'Victoria':{s:906.82,r:4097},'Alpena':{s:726.67,r:4097},'Greenwood-Greenville':{s:612.15,r:4097},'North Platte':{s:437.95,r:0},'Juneau':{s:429.64,r:0},'Cheyenne-Scottsbluff':{s:286.98,r:4097},'Glendive':{s:156.68,r:0},'Honolulu':{s:3.03,r:0},'Anchorage':{s:0.72,r:0},'Fairbanks':{s:0.01,r:0}
-};
-
-// April MTD (Apr 1 - May 4)
-const aprMtd = {
+const aprMtd={
 'Los Angeles':{s:228282.00,r:1134825},'New York':{s:191387.42,r:1130728},'San Francisco-Oak-San Jose':{s:92973.04,r:393297},'Dallas-Ft. Worth':{s:68039.17,r:458846},'Tampa-St. Pete (Sarasota)':{s:62821.24,r:356425},'Philadelphia':{s:61868.44,r:516202},'Chicago':{s:57235.52,r:409684},'Denver':{s:57160.60,r:311360},'Boston (Manchester)':{s:57017.41,r:413781},'Miami-Ft. Lauderdale':{s:56956.59,r:245810},'Orlando-Daytona Bch-Melbrn':{s:56373.70,r:278585},'Houston':{s:53438.80,r:335941},'Washington, DC (Hagrstwn)':{s:46541.17,r:348231},'San Diego':{s:45787.55,r:196648},'Sacramnto-Stkton-Modesto':{s:44438.89,r:270392},'Seattle-Tacoma':{s:43762.91,r:315457},'Portland, OR':{s:41144.21,r:294973},'Phoenix (Prescott)':{s:39155.86,r:344135},'Atlanta':{s:38051.72,r:323650},'Minneapolis-St. Paul':{s:37977.45,r:217133},'Fresno-Visalia':{s:12848.09,r:102421},'Santabarbra-Sanmar-Sanluob':{s:9070.20,r:40968},'Monterey-Salinas':{s:8344.69,r:73743},'Bakersfield':{s:5149.49,r:36872},'Palm Springs':{s:5010.61,r:24581},'Chico-Redding':{s:4987.74,r:36872},'Eureka':{s:1787.98,r:16387},'Yuma-El Centro':{s:1636.30,r:20484},'Reno':{s:6392.76,r:57356}
 };
 
-// L7D / L14D for WoW
-const l7d = {'Los Angeles':40926.23,'New York':34870.16,'San Francisco-Oak-San Jose':16277.75,'Dallas-Ft. Worth':12826.06,'San Diego':8513.46,'Sacramnto-Stkton-Modesto':8311.44,'Fresno-Visalia':2390.92,'Santabarbra-Sanmar-Sanluob':1668.45,'Monterey-Salinas':1484.32,'Bakersfield':976.27,'Chico-Redding':958.33,'Palm Springs':856.54,'Eureka':338.18,'Yuma-El Centro':305.51,'Reno':1278.76,'Tampa-St. Pete (Sarasota)':11916.53,'Philadelphia':11798.55,'Boston (Manchester)':11229.33,'Chicago':11090.92,'Denver':10833.89,'Orlando-Daytona Bch-Melbrn':10778.49,'Miami-Ft. Lauderdale':10131.84,'Houston':9932.03,'Washington, DC (Hagrstwn)':8698.52,'Seattle-Tacoma':8487.26,'Portland, OR':7840.89,'Phoenix (Prescott)':7840.75,'Atlanta':7393.12,'Minneapolis-St. Paul':7199.26};
-const l14d = {'Los Angeles':87293.18,'New York':73126.05,'San Francisco-Oak-San Jose':34902.30,'Dallas-Ft. Worth':26978.48,'San Diego':17982.42,'Sacramnto-Stkton-Modesto':17613.22,'Fresno-Visalia':5044.29,'Santabarbra-Sanmar-Sanluob':3514.45,'Monterey-Salinas':3219.14,'Bakersfield':2018.11,'Chico-Redding':2010.97,'Palm Springs':1910.68,'Eureka':718.10,'Yuma-El Centro':624.27,'Reno':2605.00,'Tampa-St. Pete (Sarasota)':24959.88,'Philadelphia':24555.75,'Boston (Manchester)':22662.46,'Chicago':22760.80,'Denver':22342.09,'Orlando-Daytona Bch-Melbrn':22425.74,'Miami-Ft. Lauderdale':21540.13,'Houston':21191.52,'Washington, DC (Hagrstwn)':18395.73,'Seattle-Tacoma':17342.84,'Portland, OR':15911.45,'Phoenix (Prescott)':16082.57,'Atlanta':15688.59,'Minneapolis-St. Paul':14876.88};
-const l28d = {'Los Angeles':189826.53,'New York':160604.17,'San Francisco-Oak-San Jose':77328.68,'Dallas-Ft. Worth':56665.82,'San Diego':38401.08,'Sacramnto-Stkton-Modesto':37362.40,'Fresno-Visalia':10823.26,'Santabarbra-Sanmar-Sanluob':7662.74,'Monterey-Salinas':7007.88,'Bakersfield':4325.08,'Chico-Redding':4215.19,'Palm Springs':4163.08,'Eureka':1516.80,'Yuma-El Centro':1386.18,'Reno':5536.51,'Tampa-St. Pete (Sarasota)':52200.73,'Philadelphia':52638.02,'Boston (Manchester)':48686.14,'Chicago':49315.84,'Denver':48027.29,'Orlando-Daytona Bch-Melbrn':46750.24,'Miami-Ft. Lauderdale':46479.17,'Houston':44300.14,'Washington, DC (Hagrstwn)':39501.73,'Seattle-Tacoma':38093.11,'Portland, OR':34853.66,'Phoenix (Prescott)':34072.48,'Atlanta':32971.48,'Minneapolis-St. Paul':31833.82};
-const aprMtdReach = {'Los Angeles':1134825,'San Francisco-Oak-San Jose':393297,'Sacramnto-Stkton-Modesto':270392,'San Diego':196648,'Fresno-Visalia':102421,'Monterey-Salinas':73743,'Chico-Redding':36872,'Eureka':16387,'Santabarbra-Sanmar-Sanluob':40968,'Bakersfield':36872,'Palm Springs':24581,'Yuma-El Centro':20484,'Reno':57356};
+const l7d={
+'Los Angeles':40926.23,'New York':34870.16,'San Francisco-Oak-San Jose':16277.75,'Dallas-Ft. Worth':12826.06,'San Diego':8513.46,'Sacramnto-Stkton-Modesto':8311.44,'Fresno-Visalia':2390.92,'Santabarbra-Sanmar-Sanluob':1668.45,'Monterey-Salinas':1484.32,'Bakersfield':976.27,'Chico-Redding':958.33,'Palm Springs':856.54,'Eureka':338.18,'Yuma-El Centro':305.51,'Reno':1278.76,'Tampa-St. Pete (Sarasota)':11916.53,'Philadelphia':11798.55,'Boston (Manchester)':11229.33,'Chicago':11090.92,'Denver':10833.89,'Orlando-Daytona Bch-Melbrn':10778.49,'Miami-Ft. Lauderdale':10131.84,'Houston':9932.03,'Washington, DC (Hagrstwn)':8698.52,'Seattle-Tacoma':8487.26,'Portland, OR':7840.89,'Phoenix (Prescott)':7840.75,'Atlanta':7393.12,'Minneapolis-St. Paul':7199.26
+};
 
-// ─── COMPUTED VALUES ───
-let usSpend=0, usReach=0;
-Object.values(ytd).forEach(d => { usSpend+=d.s; usReach+=d.r; });
+const l14d={
+'Los Angeles':87293.18,'New York':73126.05,'San Francisco-Oak-San Jose':34902.30,'Dallas-Ft. Worth':26978.48,'San Diego':17982.42,'Sacramnto-Stkton-Modesto':17613.22,'Fresno-Visalia':5044.29,'Santabarbra-Sanmar-Sanluob':3514.45,'Monterey-Salinas':3219.14,'Bakersfield':2018.11,'Chico-Redding':2010.97,'Palm Springs':1910.68,'Eureka':718.10,'Yuma-El Centro':624.27,'Reno':2605.00,'Tampa-St. Pete (Sarasota)':24959.88,'Philadelphia':24555.75,'Boston (Manchester)':22662.46,'Chicago':22760.80,'Denver':22342.09,'Orlando-Daytona Bch-Melbrn':22425.74,'Miami-Ft. Lauderdale':21540.13,'Houston':21191.52,'Washington, DC (Hagrstwn)':18395.73,'Seattle-Tacoma':17342.84,'Portland, OR':15911.45,'Phoenix (Prescott)':16082.57,'Atlanta':15688.59,'Minneapolis-St. Paul':14876.88
+};
 
-let pfeSpendYTD=0, pfeReachYTD=0;
-pfeDMANames.forEach(k => { pfeSpendYTD+=ytd[k].s; pfeReachYTD+=ytd[k].r; });
+const l28d={
+'Los Angeles':189826.53,'New York':160604.17,'San Francisco-Oak-San Jose':77328.68,'Dallas-Ft. Worth':56665.82,'San Diego':38401.08,'Sacramnto-Stkton-Modesto':37362.40,'Fresno-Visalia':10823.26,'Santabarbra-Sanmar-Sanluob':7662.74,'Monterey-Salinas':7007.88,'Bakersfield':4325.08,'Chico-Redding':4215.19,'Palm Springs':4163.08,'Eureka':1516.80,'Yuma-El Centro':1386.18,'Reno':5536.51,'Tampa-St. Pete (Sarasota)':52200.73,'Philadelphia':52638.02,'Boston (Manchester)':48686.14,'Chicago':49315.84,'Denver':48027.29,'Orlando-Daytona Bch-Melbrn':46750.24,'Miami-Ft. Lauderdale':46479.17,'Houston':44300.14,'Washington, DC (Hagrstwn)':39501.73,'Seattle-Tacoma':38093.11,'Portland, OR':34853.66,'Phoenix (Prescott)':34072.48,'Atlanta':32971.48,'Minneapolis-St. Paul':31833.82
+};
 
-let aprUsSpend=0, aprUsReach=0;
-Object.values(aprMtd).forEach(d => { aprUsSpend+=d.s; aprUsReach+=d.r; });
-// Approximate full April US from the MTD file total
-const aprUsTotalSpend = 2097754; // sum of all DMAs in Apr MTD file
-const aprUsTotalReach = 14168910;
+const pfeDMAs=['San Francisco-Oak-San Jose','Sacramnto-Stkton-Modesto','Fresno-Visalia','Monterey-Salinas','Chico-Redding','Eureka'];
 
-let aprPfeSpend=0, aprPfeReach=0;
-pfeDMANames.forEach(k => { if(aprMtd[k]){ aprPfeSpend+=aprMtd[k].s; aprPfeReach+=aprMtd[k].r; }});
+const caDMAs=['Los Angeles','San Francisco-Oak-San Jose','San Diego','Sacramnto-Stkton-Modesto','Fresno-Visalia','Santabarbra-Sanmar-Sanluob','Monterey-Salinas','Bakersfield','Chico-Redding','Palm Springs','Eureka','Yuma-El Centro'];
 
-const spendPctYTD = pfeSpendYTD/usSpend*100;
-const reachPctYTD = pfeReachYTD/usReach*100;
-const aprSpendPct = aprPfeSpend/aprUsTotalSpend*100;
-const aprReachPct = aprPfeReach/aprUsTotalReach*100;
+const moiEast={
+'Florida':['Tampa-St. Pete (Sarasota)','Orlando-Daytona Bch-Melbrn','Miami-Ft. Lauderdale','Jacksonville','West Palm Beach-Ft. Pierce','Ft. Myers-Naples','Tallahassee-Thomasville','Panama City','Gainesville'],
+'New York':['New York','Albany-Schenectady-Troy','Syracuse','Rochester, NY','Buffalo'],
+'Pennsylvania':['Philadelphia','Pittsburgh','Harrisburg-Lncstr-Leb-York','Wilkes Barre-Scranton-Hztn'],
+'Ohio':['Cleveland-Akron (Canton)','Columbus, OH','Cincinnati','Dayton','Toledo','Youngstown'],
+'Illinois':['Chicago','Rockford','Peoria-Bloomington','Champaign&Sprngfld-Decatur'],
+'Michigan':['Detroit','Grand Rapids-Kalmzoo-B.Crk','Flint-Saginaw-Bay City','Traverse City-Cadillac','Lansing','Marquette'],
+'North Carolina':['Charlotte','Raleigh-Durham (Fayetvlle)','Greensboro-H.Point-W.Salem','Greenville-N.Bern-Washngtn','Wilmington'],
+'Georgia':['Atlanta','Savannah','Macon','Augusta-Aiken'],
+'Texas':['Dallas-Ft. Worth','Houston','San Antonio','Austin','Waco-Temple-Bryan','El Paso (Las Cruces)','Harlingen-Wslco-Brnsvl-Mca','Corpus Christi','Tyler-Longview(Lfkn&Ncgd)','Lubbock','Amarillo','Odessa-Midland','Beaumont-Port Arthur','Sherman-Ada','Abilene-Sweetwater','Laredo','Victoria','San Angelo','Wichita Falls & Lawton']
+};
 
-// ─── HELPERS ───
-function fmt(n){ return '$'+Math.round(n).toLocaleString(); }
-function fmtK(n){ return n>=1000000?'$'+(n/1000000).toFixed(1)+'M':'$'+Math.round(n/1000).toLocaleString()+'K'; }
-function fmtReach(n){ return n>=1000000?(n/1000000).toFixed(1)+'M':Math.round(n/1000).toLocaleString()+'K'; }
+const moiWest={
+'California':caDMAs,
+'Oregon':['Portland, OR','Eugene','Medford-Klamath Falls','Bend, OR'],
+'Washington':['Seattle-Tacoma','Spokane','Yakima-Pasco-Rchlnd-Knnwck'],
+'Colorado':['Denver','Colorado Springs-Pueblo','Grand Junction-Montrose']
+};
 
-// ─── TOP METRICS ───
-const sorted = Object.entries(ytd).sort((a,b)=>b[1].s-a[1].s);
-const sfRank = sorted.findIndex(e=>e[0]==='San Francisco-Oak-San Jose')+1;
-const sacRank = sorted.findIndex(e=>e[0]==='Sacramnto-Stkton-Modesto')+1;
+const coords={
+'New York':[40.71,-74.01],'Los Angeles':[34.05,-118.24],'Chicago':[41.88,-87.63],'Philadelphia':[39.95,-75.17],'Boston (Manchester)':[42.36,-71.06],'San Francisco-Oak-San Jose':[37.77,-122.20],'Seattle-Tacoma':[47.61,-122.33],'Washington, DC (Hagrstwn)':[38.91,-77.04],'Atlanta':[33.75,-84.39],'Phoenix (Prescott)':[33.45,-112.07],'Dallas-Ft. Worth':[32.78,-96.80],'Tampa-St. Pete (Sarasota)':[27.95,-82.46],'Denver':[39.74,-104.99],'Orlando-Daytona Bch-Melbrn':[28.54,-81.38],'Miami-Ft. Lauderdale':[25.76,-80.19],'Detroit':[42.33,-83.05],'Houston':[29.76,-95.37],'Portland, OR':[45.52,-122.68],'San Diego':[32.72,-117.16],'Cleveland-Akron (Canton)':[41.50,-81.69],'Sacramnto-Stkton-Modesto':[38.58,-121.49],'Minneapolis-St. Paul':[44.98,-93.27],'Charlotte':[35.23,-80.84],'Salt Lake City':[40.76,-111.89],'Nashville':[36.16,-86.78],'Pittsburgh':[40.44,-79.99],'Raleigh-Durham (Fayetvlle)':[35.78,-78.64],'Hartford & New Haven':[41.76,-72.68],'Indianapolis':[39.77,-86.16],'Austin':[30.27,-97.74],'Columbus, OH':[39.96,-82.99],'Las Vegas':[36.17,-115.14],'St. Louis':[38.63,-90.20],'Milwaukee':[43.04,-87.91],'West Palm Beach-Ft. Pierce':[26.71,-80.05],'Kansas City':[39.10,-94.58],'Greenvll-Spart-Ashevll-And':[34.85,-82.40],'Baltimore':[39.29,-76.61],'Harrisburg-Lncstr-Leb-York':[40.27,-76.88],'Cincinnati':[39.10,-84.51],'Norfolk-Portsmth-Newpt Nws':[36.85,-76.29],'San Antonio':[29.42,-98.49],'Grand Rapids-Kalmzoo-B.Crk':[42.96,-85.66],'Jacksonville':[30.33,-81.66],'Albany-Schenectady-Troy':[42.65,-73.76],'Portland-Auburn':[43.66,-70.26],'Providence-New Bedford':[41.82,-71.41],'Buffalo':[42.89,-78.88],'Richmond-Petersburg':[37.54,-77.44],'Ft. Myers-Naples':[26.64,-81.87],'Wilkes Barre-Scranton-Hztn':[41.25,-75.88],'Albuquerque-Santa Fe':[35.08,-106.65],'Louisville':[38.25,-85.76],'Greensboro-H.Point-W.Salem':[36.07,-79.79],'Oklahoma City':[35.47,-97.52],'Spokane':[47.66,-117.43],'Rochester, NY':[43.16,-77.61],'Charleston, SC':[32.90,-79.94],'Knoxville':[35.96,-83.92],'Green Bay-Appleton':[44.51,-88.02],'Burlington-Plattsburgh':[44.48,-73.21],'New Orleans':[29.95,-90.07],'Madison':[43.07,-89.40],'Tucson (Sierra Vista)':[32.22,-110.93],'Mobile-Pensacola (Ft Walt)':[30.69,-88.04],'Syracuse':[43.05,-76.15],'Birmingham (Ann And Tusc)':[33.52,-86.80],'Fresno-Visalia':[36.74,-119.77],'Boise':[43.62,-116.21],'Des Moines-Ames':[41.59,-93.62],'Dayton':[39.76,-84.19],'Savannah':[32.08,-81.09],'Tulsa':[36.15,-95.99],'Reno':[39.53,-119.81],'Flint-Saginaw-Bay City':[43.42,-83.95],'Toledo':[41.65,-83.54],'Colorado Springs-Pueblo':[38.83,-104.82],'Springfield-Holyoke':[42.10,-72.59],'Roanoke-Lynchburg':[37.27,-79.94],'Lexington':[38.04,-84.50],'Chattanooga':[35.05,-85.31],'Wichita-Hutchinson Plus':[37.69,-97.34],'Omaha':[41.26,-95.94],'Santabarbra-Sanmar-Sanluob':[34.42,-119.70],'Memphis':[35.15,-90.05],'Springfield, MO':[37.22,-93.29],'Columbia, SC':[34.00,-81.03],'Little Rock-Pine Bluff':[34.75,-92.29],'Cedar Rapids-Wtrlo-Iwc&Dub':[42.03,-91.67],'Champaign&Sprngfld-Decatur':[40.12,-88.24],'Monterey-Salinas':[36.67,-121.66],'Huntsville-Decatur (Flor)':[34.73,-86.59],'Ft. Smith-Fay-Sprngdl-Rgrs':[36.07,-94.17],'South Bend-Elkhart':[41.68,-86.25],'Wilmington':[34.23,-77.94],'Myrtle Beach-Florence':[33.69,-78.89],'Lansing':[42.73,-84.56],'Ft. Wayne':[41.08,-85.14],'Eugene':[44.05,-123.09],'Charleston-Huntington':[38.35,-81.63],'Greenville-N.Bern-Washngtn':[35.61,-77.37],'Yakima-Pasco-Rchlnd-Knnwck':[46.60,-120.51],'Traverse City-Cadillac':[44.76,-85.62],'Davenport-R.Island-Moline':[41.52,-90.58],'Tri-Cities, TN-VA':[36.55,-82.56],'Waco-Temple-Bryan':[31.55,-97.15],'Peoria-Bloomington':[40.69,-89.59],'Johnstown-Altoona-St Colge':[40.33,-78.92],'Sioux Falls(Mitchell)':[43.55,-96.73],'Youngstown':[41.10,-80.65],'Paducah-Cape Girard-Harsbg':[37.08,-88.60],'El Paso (Las Cruces)':[31.76,-106.49],'Baton Rouge':[30.45,-91.19],'Fargo-Valley City':[46.88,-96.79],'Bangor':[44.80,-68.77],'La Crosse-Eau Claire':[43.81,-91.24],'Palm Springs':[33.83,-116.55],'Tallahassee-Thomasville':[30.44,-84.28],'Augusta-Aiken':[33.47,-81.97],'Evansville':[37.97,-87.56],'Bakersfield':[35.37,-119.02],'Lincoln & Hastings-Krny':[40.81,-96.70],'Chico-Redding':[40.59,-122.39],'Rockford':[42.27,-89.09],'Medford-Klamath Falls':[42.33,-122.87],'Wausau-Rhinelander':[44.96,-89.63],'Shreveport':[32.53,-93.75],'Harlingen-Wslco-Brnsvl-Mca':[26.19,-97.70],'Macon':[32.84,-83.63],'Minot-Bsmrck-Dcknsn(Wlstn)':[46.81,-100.78],'Columbia-Jefferson City':[38.95,-92.33],'Salisbury':[38.37,-75.60],'Binghamton':[42.10,-75.91],'Panama City':[30.16,-85.66],'Erie':[42.13,-80.09],'Gainesville':[29.65,-82.32],'Columbus, GA (Opelika, Al)':[32.46,-84.99],'Idaho Fals-Pocatllo(Jcksn)':[43.47,-112.03],'Tyler-Longview(Lfkn&Ncgd)':[32.35,-95.30],'Topeka':[39.05,-95.68],'Corpus Christi':[27.80,-97.40],'Duluth-Superior':[46.79,-92.10],'Lafayette, LA':[30.22,-92.02],'Missoula':[46.87,-114.00],'Jackson, MS':[32.30,-90.18],'Harrisonburg':[38.45,-78.87],'Rapid City':[44.08,-103.23],'Utica':[43.10,-75.23],'Rochester-Mason City-Austin':[43.98,-92.48],'Bend, OR':[44.06,-121.31],'Joplin-Pittsburg':[37.08,-94.51],'Charlottesville':[38.03,-78.48],'Montgomery-Selma':[32.37,-86.30],'Terre Haute':[39.47,-87.41],'Sioux City':[42.50,-96.40],'Biloxi-Gulfport':[30.40,-89.09],'Wheeling-Steubenville':[40.06,-80.72],'Billings':[45.78,-108.50],'Elmira (Corning)':[42.09,-76.81],'Watertown':[43.97,-75.91],'Odessa-Midland':[31.95,-102.08],'Amarillo':[35.22,-101.83],'Yuma-El Centro':[32.73,-115.51],'Butte-Bozeman':[45.78,-111.18],'Wichita Falls & Lawton':[33.91,-98.49],'Lubbock':[33.58,-101.85],'Sherman-Ada':[33.64,-96.61],'Marquette':[46.55,-87.40],'Clarksburg-Weston':[39.28,-80.34],'Grand Junction-Montrose':[39.06,-108.55],'Beaumont-Port Arthur':[30.08,-94.10],'Eureka':[40.80,-124.16],'Abilene-Sweetwater':[32.45,-99.73],'Laredo':[27.51,-99.51],'Victoria':[28.81,-96.99],'San Angelo':[31.46,-100.44]
+};
 
-document.getElementById('top-metrics').innerHTML = `
-  <div class="metric-card"><p class="metric-label">PFE DMAs — YTD spend</p><p class="metric-value accent-blue">${fmtK(pfeSpendYTD)}</p><p class="metric-sub">${spendPctYTD.toFixed(1)}% of total US</p></div>
-  <div class="metric-card"><p class="metric-label">PFE DMAs — YTD reach</p><p class="metric-value accent-green">${fmtReach(pfeReachYTD)}</p><p class="metric-sub">${reachPctYTD.toFixed(1)}% of total US</p></div>
-  <div class="metric-card"><p class="metric-label">SF Bay Area — US rank</p><p class="metric-value">#${sfRank}</p><p class="metric-sub">${fmtK(ytd['San Francisco-Oak-San Jose'].s)} YTD</p></div>
-  <div class="metric-card"><p class="metric-label">Sacramento — US rank</p><p class="metric-value">#${sacRank}</p><p class="metric-sub">${fmtK(ytd['Sacramnto-Stkton-Modesto'].s)} YTD</p></div>
-`;
+// ========== COMPUTED ==========
+const totalUSSpend = Object.values(ytd).reduce((a,b)=>a+b.s,0);
+const totalUSReach = Object.values(ytd).reduce((a,b)=>a+b.r,0);
+const totalAprSpend = Object.values(aprMtd).reduce((a,b)=>a+b.s,0);
+const totalAprReach = Object.values(aprMtd).reduce((a,b)=>a+b.r,0);
 
-// ─── RINGS ───
-function ringSVG(pct, color, label, sub) {
-  const size=110, stroke=9, r=(size-stroke)/2, circ=2*Math.PI*r;
-  const filled=circ*pct/100;
-  const trail=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)';
-  const textFill=isDark?'#e8e8e4':'#1a1a1a';
-  const subFill=isDark?'rgba(255,255,255,0.45)':'#9a9a96';
-  return `<div class="ring-item"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${trail}" stroke-width="${stroke}"/>
-    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
-      stroke-dasharray="${filled.toFixed(1)} ${(circ-filled).toFixed(1)}" stroke-dashoffset="${(circ/4).toFixed(1)}" stroke-linecap="round"/>
-    <text x="${size/2}" y="${size/2-4}" text-anchor="middle" font-size="19" font-weight="600" fill="${textFill}">${pct.toFixed(1)}%</text>
-    <text x="${size/2}" y="${size/2+13}" text-anchor="middle" font-size="10" fill="${subFill}">${sub}</text>
-  </svg><p class="ring-label">${label}</p></div>`;
+function sumS(list,data){return list.reduce((a,k)=>a+((data[k]||{}).s||0),0);}
+function sumR(list,data){return list.reduce((a,k)=>a+((data[k]||{}).r||0),0);}
+
+const pfeYtdS=sumS(pfeDMAs,ytd), pfeYtdR=sumR(pfeDMAs,ytd);
+const pfeAprS=sumS(pfeDMAs,aprMtd), pfeAprR=sumR(pfeDMAs,aprMtd);
+
+const fmt=n=>'$'+Math.round(n).toLocaleString('en-US');
+const fmtK=n=>n>=1e6?'$'+(n/1e6).toFixed(1)+'M':n>=1e3?'$'+Math.round(n/1e3).toLocaleString('en-US')+'K':'$'+Math.round(n);
+const fmtR=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3).toLocaleString('en-US')+'K':n.toFixed(0);
+const pct=(n,d)=>d>0?(n/d*100).toFixed(1)+'%':'0.0%';
+
+const sorted=Object.entries(ytd).sort((a,b)=>b[1].s-a[1].s);
+const sfRank=sorted.findIndex(e=>e[0]==='San Francisco-Oak-San Jose')+1;
+const sacRank=sorted.findIndex(e=>e[0]==='Sacramnto-Stkton-Modesto')+1;
+
+// All MOI DMAs
+const allMoiDMAs=new Set();
+Object.values(moiEast).forEach(a=>a.forEach(d=>allMoiDMAs.add(d)));
+Object.values(moiWest).forEach(a=>a.forEach(d=>allMoiDMAs.add(d)));
+
+// ========== 1. TOP METRICS ==========
+document.getElementById('topCards').innerHTML=[
+  {label:'PFE DMAs YTD Spend',val:fmtK(pfeYtdS),detail:pct(pfeYtdS,totalUSSpend)+' of US'},
+  {label:'PFE DMAs YTD Reach',val:fmtR(pfeYtdR),detail:pct(pfeYtdR,totalUSReach)+' of US'},
+  {label:'SF Bay Area Rank',val:'#'+sfRank+' in US',detail:fmtK(ytd['San Francisco-Oak-San Jose'].s)+' YTD'},
+  {label:'Sacramento Rank',val:'#'+sacRank+' in US',detail:fmtK(ytd['Sacramnto-Stkton-Modesto'].s)+' YTD'}
+].map(c=>`<div class="card"><div class="label">${c.label}</div><div class="val">${c.val}</div><div class="detail">${c.detail}</div></div>`).join('');
+
+// ========== 2. PFE SHARE RINGS ==========
+function makeRing(id,label,value,total){
+  const p=value/total*100;
+  const el=document.createElement('div');
+  el.className='ring-item';
+  el.innerHTML=`<canvas width="140" height="140"></canvas><div class="ring-val">${p.toFixed(1)}%</div><div class="ring-label">${label}</div>`;
+  document.getElementById(id).appendChild(el);
+  new Chart(el.querySelector('canvas').getContext('2d'),{
+    type:'doughnut',
+    data:{datasets:[{data:[value,total-value],backgroundColor:['#378ADD','#e0e0e0'],borderWidth:0}]},
+    options:{cutout:'72%',plugins:{legend:{display:false},tooltip:{enabled:false}},responsive:false,animation:{duration:600}}
+  });
+}
+makeRing('rings','YTD spend share',pfeYtdS,totalUSSpend);
+makeRing('rings','YTD reach share',pfeYtdR,totalUSReach);
+makeRing('rings','April spend share',pfeAprS,totalAprSpend);
+makeRing('rings','April reach share',pfeAprR,totalAprReach);
+
+// ========== 3. US MAP ==========
+const mapW=960,mapH=580;
+const svg=d3.select('#mapWrap').append('svg').attr('class','map-svg').attr('viewBox',`0 0 ${mapW} ${mapH}`);
+const mapG=svg.append('g');
+const projection=d3.geoAlbersUsa().scale(1100).translate([mapW/2,mapH/2]);
+const geoPath=d3.geoPath().projection(projection);
+const tooltip=document.getElementById('mapTooltip');
+const rScale=d3.scaleSqrt().domain([0,d3.max(Object.values(ytd),d=>d.s)]).range([3,36]);
+
+const zoom=d3.zoom().scaleExtent([0.8,10]).on('zoom',e=>{
+  mapG.attr('transform',e.transform);
+  mapG.selectAll('circle').attr('r',d=>rScale(d.spend)/Math.sqrt(e.transform.k));
+  mapG.selectAll('text').attr('font-size',(9/Math.sqrt(e.transform.k))+'px');
+});
+svg.call(zoom).on('dblclick.zoom',null);
+
+function dmaColor(k){
+  if(pfeDMAs.includes(k))return'#378ADD';
+  if(allMoiDMAs.has(k))return'#D85A30';
+  return'#888780';
 }
 
-document.getElementById('rings').innerHTML =
-  ringSVG(spendPctYTD, '#378ADD', 'YTD spend share', 'of US total') +
-  ringSVG(reachPctYTD, '#1D9E75', 'YTD reach share', 'of US total') +
-  ringSVG(aprSpendPct, '#378ADD', 'April spend share', 'of US total') +
-  ringSVG(aprReachPct, '#1D9E75', 'April reach share', 'of US total');
+d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(us=>{
+  mapG.append('g').selectAll('path')
+    .data(topojson.feature(us,us.objects.states).features)
+    .join('path').attr('d',geoPath)
+    .attr('fill','var(--bg2)').attr('stroke','var(--border)').attr('stroke-width',0.5);
 
-// ─── MAP ───
-(function drawMap(){
-  const W=680, H=520;
-  const mapEl = document.getElementById('map-container');
-  const canvas = document.createElement('canvas');
-  canvas.width = W*2; canvas.height = H*2;
-  canvas.style.width = '100%'; canvas.style.height = 'auto';
-  mapEl.appendChild(canvas);
-  const ctx = canvas.getContext('2d');
-  ctx.scale(2,2);
+  const bubbles=Object.entries(ytd).filter(([k])=>coords[k]).map(([k,v])=>{
+    const p=projection([coords[k][1],coords[k][0]]);
+    if(!p)return null;
+    return{name:k,spend:v.s,reach:v.r,x:p[0],y:p[1],color:dmaColor(k)};
+  }).filter(Boolean).sort((a,b)=>b.spend-a.spend);
 
-  // Simple Mercator projection centered on California
-  function project(lng, lat) {
-    const cx=-119.5, cy=37.2, scale=3800;
-    const x = (lng-cx)*scale*Math.PI/180 + W/2;
-    const latRad = lat*Math.PI/180;
-    const cyRad = cy*Math.PI/180;
-    const y = (Math.log(Math.tan(Math.PI/4+cyRad/2)) - Math.log(Math.tan(Math.PI/4+latRad/2)))*scale + H/2;
-    return [x,y];
+  const bubbleG=mapG.append('g');
+
+  function draw(filterFn,showLabels){
+    bubbleG.selectAll('*').remove();
+    const data=filterFn?bubbles.filter(filterFn):bubbles;
+    bubbleG.selectAll('circle').data(data).join('circle')
+      .attr('cx',d=>d.x).attr('cy',d=>d.y)
+      .attr('r',d=>rScale(d.spend))
+      .attr('fill',d=>d.color).attr('fill-opacity',0.65)
+      .attr('stroke',d=>d.color).attr('stroke-width',1).attr('stroke-opacity',0.9)
+      .style('cursor','pointer')
+      .on('mouseenter',function(ev,d){
+        tooltip.innerHTML=`<strong>${d.name}</strong><br>Spend: ${fmt(d.spend)}<br>Reach: ${fmtR(d.reach)}`;
+        tooltip.classList.add('show');
+      })
+      .on('mousemove',function(ev){
+        const r=document.getElementById('mapWrap').getBoundingClientRect();
+        tooltip.style.left=(ev.clientX-r.left+14)+'px';
+        tooltip.style.top=(ev.clientY-r.top-10)+'px';
+      })
+      .on('mouseleave',()=>tooltip.classList.remove('show'));
+
+    if(showLabels){
+      const labelData=data.filter(d=>d.spend>3000).slice(0,20);
+      bubbleG.selectAll('text').data(labelData).join('text')
+        .attr('x',d=>d.x).attr('y',d=>d.y-rScale(d.spend)-4)
+        .attr('text-anchor','middle').attr('font-size','9px')
+        .attr('fill','var(--text)').attr('font-family','-apple-system,sans-serif')
+        .text(d=>d.name.split('-')[0].split(',')[0].split('(')[0].trim());
+    }
   }
 
-  // CA outline approximation
-  const caOutline = [[-124.4,42],[-122.4,42],[-120,42],[-120,39],[-117.6,33.5],[-117.2,32.6],[-114.6,32.7],[-114.6,35],[-114.7,36.2],[-117.5,37],[-118.5,37.8],[-120,38.9],[-121.5,39.5],[-122.4,40.3],[-124,40.5],[-124.4,42]];
-  ctx.beginPath();
-  caOutline.forEach((p,i)=>{const[x,y]=project(p[0],p[1]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
-  ctx.closePath();
-  ctx.fillStyle=isDark?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.02)';
-  ctx.fill();
-  ctx.strokeStyle=isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.08)';
-  ctx.lineWidth=0.5;
-  ctx.stroke();
+  let currentFilter=null;
+  draw(null,false);
 
-  // Bubbles
-  const maxSpend = Math.max(...Object.keys(caDMAs).map(k=>ytd[k]?ytd[k].s:0));
-  const entries = Object.entries(caDMAs).map(([name,info])=>{
-    const spend=ytd[name]?ytd[name].s:0;
-    const reach=ytd[name]?ytd[name].r:0;
-    const [x,y]=project(info.lng,info.lat);
-    return {name,spend,reach,x,y,pfe:info.pfe};
-  }).sort((a,b)=>b.spend-a.spend);
+  function zoomTo(tx,ty,s){
+    const t=d3.zoomIdentity.translate(tx,ty).scale(s);
+    svg.transition().duration(700).call(zoom.transform,t);
+  }
 
-  function rScale(s){ return 6+Math.sqrt(s/maxSpend)*58; }
+  const views={
+    us(){currentFilter=null;draw(null,false);zoomTo(0,0,1);},
+    ca(){
+      const c=projection([-119.5,37.5]);
+      if(!c)return;
+      const s=3.2,tx=mapW/2-c[0]*s,ty=mapH/2-c[1]*s;
+      currentFilter=d=>caDMAs.includes(d.name);
+      draw(currentFilter,true);
+      zoomTo(tx,ty,s);
+    },
+    moi(){
+      currentFilter=d=>allMoiDMAs.has(d.name);
+      draw(currentFilter,false);
+      zoomTo(40,0,1.1);
+    }
+  };
 
-  entries.forEach(d=>{
-    const r=rScale(d.spend);
-    ctx.beginPath();
-    ctx.arc(d.x,d.y,r,0,Math.PI*2);
-    ctx.fillStyle=d.pfe?(isDark?'rgba(55,138,221,0.3)':'rgba(55,138,221,0.15)'):(isDark?'rgba(136,135,128,0.2)':'rgba(136,135,128,0.12)');
-    ctx.fill();
-    ctx.strokeStyle=d.pfe?'#378ADD':'#888780';
-    ctx.lineWidth=d.pfe?1.5:0.5;
-    ctx.stroke();
+  document.getElementById('mapToggle').addEventListener('click',e=>{
+    if(!e.target.matches('button'))return;
+    document.querySelectorAll('#mapToggle button').forEach(b=>b.classList.remove('active'));
+    e.target.classList.add('active');
+    views[e.target.dataset.view]();
   });
+});
 
-  // Labels
-  ctx.textAlign='center';
-  entries.forEach(d=>{
-    if(d.spend<2000) return;
-    const r=rScale(d.spend);
-    let label=d.name.replace('-Oak-San Jose','').replace('Sacramnto-Stkton-Modesto','Sacramento')
-      .replace('Santabarbra-Sanmar-Sanluob','Santa Barbara').replace('Fresno-Visalia','Fresno')
-      .replace('Yuma-El Centro','Yuma');
-    const inside=d.spend>50000;
-    const y=inside?d.y+4:d.y+r+14;
-    ctx.font=`${d.pfe?'600':'400'} ${d.spend>50000?'13':'11'}px -apple-system, system-ui, sans-serif`;
-    ctx.fillStyle=inside?(isDark?'#B5D4F4':'#0C447C'):(isDark?'rgba(255,255,255,0.6)':'#6b6b6b');
-    ctx.fillText(label+' '+fmtK(d.spend), d.x, y);
-  });
-})();
-
-// ─── PFE TABLE ───
+// ========== 4. MARKETS OF INTEREST TABLE ==========
 (function(){
-  const tbody=document.getElementById('pfe-table-body');
-  const tfoot=document.getElementById('pfe-table-foot');
-  let totS=0,totR=0,totAS=0;
-  pfeDMANames.forEach(k=>{
-    const d=ytd[k], a=aprMtd[k]||{s:0,r:0};
-    totS+=d.s; totR+=d.r; totAS+=a.s;
-    const rank=Object.entries(ytd).sort((a,b)=>b[1].s-a[1].s).findIndex(e=>e[0]===k)+1;
-    const tr=document.createElement('tr');
-    tr.className='pfe-row';
-    tr.innerHTML=`<td class="dma-name">${pfeLabels[k]} <span class="rank-badge">#${rank} US</span></td>
-      <td class="num">${fmt(d.s)}</td><td class="num">${(d.s/usSpend*100).toFixed(2)}%</td>
-      <td class="num">${d.r.toLocaleString()}</td><td class="num">${(d.r/usReach*100).toFixed(2)}%</td>
-      <td class="num">${fmt(a.s)}</td>`;
-    tbody.appendChild(tr);
-  });
-  tfoot.innerHTML=`<tr>
-    <td class="dma-name">Total PFE DMAs</td>
-    <td class="num">${fmt(totS)}</td><td class="num" style="color:var(--blue)">${(totS/usSpend*100).toFixed(1)}%</td>
-    <td class="num">${totR.toLocaleString()}</td><td class="num" style="color:var(--green)">${(totR/usReach*100).toFixed(1)}%</td>
-    <td class="num">${fmt(totAS)}</td>
-  </tr>`;
-})();
+  let html='<table><thead><tr><th>State / Region</th><th>DMAs</th><th>YTD Spend</th><th>% US</th><th>YTD Reach</th><th>% US</th></tr></thead><tbody>';
 
-// ─── WOW TABLE ───
-let currentTab='ca';
-function showTab(tab){
-  currentTab=tab;
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>{if(b.textContent.includes(tab==='ca'?'California':'Top 15'))b.classList.add('active');});
-  renderWow();
-}
-function renderWow(){
-  const tbody=document.getElementById('wow-table-body');
-  tbody.innerHTML='';
-  let rows=[];
-  if(currentTab==='ca'){
-    rows=Object.keys(caDMAs).map(k=>{
-      const w1=l7d[k]||0, w0=(l14d[k]||0)-w1;
-      const chg=w0>0?((w1-w0)/w0*100):0;
-      return {name:k,pfe:caDMAs[k].pfe,w1,w0,chg,mtd:aprMtd[k]?aprMtd[k].s:0,reach:aprMtd[k]?aprMtd[k].r:0};
-    }).sort((a,b)=>b.mtd-a.mtd);
-  } else {
-    const top15=['Los Angeles','New York','San Francisco-Oak-San Jose','Dallas-Ft. Worth','Tampa-St. Pete (Sarasota)','Philadelphia','Chicago','Denver','Boston (Manchester)','Miami-Ft. Lauderdale','Orlando-Daytona Bch-Melbrn','Houston','Washington, DC (Hagrstwn)','San Diego','Sacramnto-Stkton-Modesto'];
-    rows=top15.map(k=>{
-      const w1=l7d[k]||0, w0=(l14d[k]||0)-w1;
-      const chg=w0>0?((w1-w0)/w0*100):0;
-      const isPfe=caDMAs[k]&&caDMAs[k].pfe;
-      return {name:k,pfe:isPfe,w1,w0,chg,mtd:aprMtd[k]?aprMtd[k].s:0,reach:aprMtd[k]?aprMtd[k].r:0};
+  function region(label,groups){
+    html+=`<tr class="region-header"><td colspan="6">${label}</td></tr>`;
+    let rs=0,rr=0;
+    const entries=Object.entries(groups);
+    // Sort by combined spend descending
+    entries.sort((a,b)=>{
+      const sa=a[1].reduce((x,k)=>x+((ytd[k]||{}).s||0),0);
+      const sb=b[1].reduce((x,k)=>x+((ytd[k]||{}).s||0),0);
+      return sb-sa;
     });
+    entries.forEach(([state,dmas])=>{
+      const ss=sumS(dmas,ytd),sr=sumR(dmas,ytd);
+      rs+=ss;rr+=sr;
+      const id='moi_'+state.replace(/\W/g,'');
+      html+=`<tr class="group-header" onclick="toggleMOI('${id}')"><td><span id="arr_${id}" style="display:inline-block;width:14px;">&#9656;</span> ${state}</td><td>${dmas.length}</td><td>${fmt(ss)}</td><td>${pct(ss,totalUSSpend)}</td><td>${fmtR(sr)}</td><td>${pct(sr,totalUSReach)}</td></tr>`;
+      // Sort sub-DMAs by spend descending
+      const sortedDmas=[...dmas].sort((a,b)=>((ytd[b]||{}).s||0)-((ytd[a]||{}).s||0));
+      sortedDmas.forEach(d=>{
+        const v=ytd[d]||{s:0,r:0};
+        html+=`<tr class="sub-row ${id}"><td>${d}</td><td></td><td>${fmt(v.s)}</td><td>${pct(v.s,totalUSSpend)}</td><td>${fmtR(v.r)}</td><td>${pct(v.r,totalUSReach)}</td></tr>`;
+      });
+    });
+    return{s:rs,r:rr};
   }
-  rows.forEach(r=>{
-    const tr=document.createElement('tr');
-    if(r.pfe) tr.className='pfe-row';
-    const chgClass=r.chg>=0?'change-up':'change-down';
-    const chgStr=(r.chg>=0?'+':'')+Math.round(r.chg)+'%';
-    const badge=r.pfe?'<span class="pfe-badge">PFE</span>':'';
-    const short=r.name.replace('San Francisco-Oak-San Jose','SF-Oakland-San Jose').replace('Sacramnto-Stkton-Modesto','Sacramento').replace('Santabarbra-Sanmar-Sanluob','Santa Barbara').replace('Tampa-St. Pete (Sarasota)','Tampa-St. Pete').replace('Orlando-Daytona Bch-Melbrn','Orlando-Daytona').replace('Washington, DC (Hagrstwn)','Washington DC').replace('Boston (Manchester)','Boston').replace('Minneapolis-St. Paul','Minneapolis');
-    tr.innerHTML=`<td class="dma-name">${short}${badge}</td><td class="num">${fmt(r.w1)}</td><td class="num">${fmt(r.w0)}</td><td class="num ${chgClass}">${chgStr}</td><td class="num">${fmtK(r.mtd)}</td><td class="num">${fmtReach(r.reach)}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-renderWow();
 
-// ─── TREND CHART ───
+  const east=region('East / Central',moiEast);
+  html+=`<tr class="total-row"><td>East / Central total</td><td></td><td>${fmt(east.s)}</td><td>${pct(east.s,totalUSSpend)}</td><td>${fmtR(east.r)}</td><td>${pct(east.r,totalUSReach)}</td></tr>`;
+
+  const west=region('West',moiWest);
+  html+=`<tr class="total-row"><td>West total</td><td></td><td>${fmt(west.s)}</td><td>${pct(west.s,totalUSSpend)}</td><td>${fmtR(west.r)}</td><td>${pct(west.r,totalUSReach)}</td></tr>`;
+
+  const grand={s:east.s+west.s,r:east.r+west.r};
+  html+=`<tr class="total-row" style="border-top:3px solid var(--text)"><td><strong>Grand total (all MOI)</strong></td><td></td><td>${fmt(grand.s)}</td><td>${pct(grand.s,totalUSSpend)}</td><td>${fmtR(grand.r)}</td><td>${pct(grand.r,totalUSReach)}</td></tr>`;
+  html+='</tbody></table>';
+  document.getElementById('moiTable').innerHTML=html;
+})();
+
+window.toggleMOI=function(id){
+  const rows=document.querySelectorAll('.'+id);
+  const arrow=document.getElementById('arr_'+id);
+  const isOpen=rows[0]&&rows[0].classList.contains('open');
+  rows.forEach(r=>r.classList.toggle('open'));
+  arrow.innerHTML=isOpen?'&#9656;':'&#9662;';
+};
+
+// ========== 5. PFE DMA BREAKDOWN ==========
 (function(){
-  const pfeDMAs2=pfeDMANames;
-  const otherCA=Object.keys(caDMAs).filter(k=>!pfeDMAs2.includes(k));
+  let html='<table><thead><tr><th>DMA</th><th>YTD Spend</th><th>% US</th><th>YTD Reach</th><th>% US</th><th>Apr MTD Spend</th></tr></thead><tbody>';
+  let ts=0,tr=0,ta=0;
+  // Sort PFE DMAs by spend
+  const pfeSort=[...pfeDMAs].sort((a,b)=>(ytd[b]||{}).s-(ytd[a]||{}).s);
+  pfeSort.forEach(k=>{
+    const v=ytd[k]||{s:0,r:0};const a=(aprMtd[k]||{}).s||0;
+    ts+=v.s;tr+=v.r;ta+=a;
+    html+=`<tr><td>${k}</td><td>${fmt(v.s)}</td><td>${pct(v.s,totalUSSpend)}</td><td>${fmtR(v.r)}</td><td>${pct(v.r,totalUSReach)}</td><td>${fmt(a)}</td></tr>`;
+  });
+  html+=`<tr class="total-row"><td>PFE Total</td><td>${fmt(ts)}</td><td>${pct(ts,totalUSSpend)}</td><td>${fmtR(tr)}</td><td>${pct(tr,totalUSReach)}</td><td>${fmt(ta)}</td></tr>`;
+  html+='</tbody></table>';
+  document.getElementById('pfeTable').innerHTML=html;
+})();
+
+// ========== 6. WEEK-OVER-WEEK TABLE ==========
+function buildWoW(tab){
+  let dmaList;
+  if(tab==='ca'){
+    dmaList=[...caDMAs].filter(k=>l7d[k]!==undefined);
+    // Also include Reno since it appears in l7d and is a nearby CA-adjacent market
+    if(l7d['Reno']!==undefined && !dmaList.includes('Reno'))dmaList.push('Reno');
+  } else {
+    dmaList=sorted.slice(0,15).map(e=>e[0]).filter(k=>l7d[k]!==undefined);
+  }
+
+  let html='<table><thead><tr><th>DMA</th><th>L7D Spend</th><th>Prior Week</th><th>WoW Chg</th><th>MTD Spend</th><th>MTD Reach</th></tr></thead><tbody>';
+  // Sort by L7D spend descending
+  dmaList.sort((a,b)=>(l7d[b]||0)-(l7d[a]||0));
+  dmaList.forEach(k=>{
+    const cur=l7d[k]||0;
+    const prior=(l14d[k]||0)-cur;
+    const wow=prior>0?((cur-prior)/prior*100):0;
+    const cls=wow>=0?'pos':'neg';
+    const mtdS=(aprMtd[k]||{}).s||0;
+    const mtdR=(aprMtd[k]||{}).r||0;
+    html+=`<tr><td>${k}</td><td>${fmt(cur)}</td><td>${fmt(prior)}</td><td class="${cls}">${wow>=0?'+':''}${wow.toFixed(1)}%</td><td>${fmt(mtdS)}</td><td>${fmtR(mtdR)}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('wowTable').innerHTML=html;
+}
+buildWoW('ca');
+
+document.getElementById('wowTabs').addEventListener('click',e=>{
+  if(!e.target.matches('button'))return;
+  document.querySelectorAll('#wowTabs button').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  buildWoW(e.target.dataset.tab);
+});
+
+// ========== 7. PFE vs OTHER CA TREND CHART ==========
+(function(){
+  const otherCA=caDMAs.filter(k=>!pfeDMAs.includes(k));
   function sumG(g,d){return g.reduce((s,k)=>s+(d[k]||0),0);}
-  const pL7=sumG(pfeDMAs2,l7d), pPrior=sumG(pfeDMAs2,l14d)-pL7, pEarly=(sumG(pfeDMAs2,l28d)-sumG(pfeDMAs2,l14d))/2;
-  const oL7=sumG(otherCA,l7d), oPrior=sumG(otherCA,l14d)-oL7, oEarly=(sumG(otherCA,l28d)-sumG(otherCA,l14d))/2;
 
-  const textColor=isDark?'rgba(255,255,255,0.5)':'#888780';
-  const gridColor=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)';
+  const pfeW12=pfeDMAs.reduce((a,k)=>a+((l28d[k]||0)-(l14d[k]||0)),0)/2;
+  const pfePrior=pfeDMAs.reduce((a,k)=>a+((l14d[k]||0)-(l7d[k]||0)),0);
+  const pfeRecent=sumG(pfeDMAs,l7d);
 
-  new Chart(document.getElementById('trendChart'),{
+  const otherW12=otherCA.reduce((a,k)=>a+((l28d[k]||0)-(l14d[k]||0)),0)/2;
+  const otherPrior=otherCA.reduce((a,k)=>a+((l14d[k]||0)-(l7d[k]||0)),0);
+  const otherRecent=sumG(otherCA,l7d);
+
+  new Chart(document.getElementById('trendChart').getContext('2d'),{
     type:'bar',
     data:{
-      labels:['Weeks 1-2 avg (Apr 6-19)','Prior week (Apr 20-26)','Most recent week (Apr 27-May 3)'],
+      labels:['Weeks 1-2 avg','Prior week','Most recent week'],
       datasets:[
-        {label:'PFE DMAs',data:[Math.round(pEarly),Math.round(pPrior),Math.round(pL7)],backgroundColor:'#378ADD',borderRadius:4,barPercentage:0.7},
-        {label:'Other CA',data:[Math.round(oEarly),Math.round(oPrior),Math.round(oL7)],backgroundColor:'#B4B2A9',borderRadius:4,barPercentage:0.7}
+        {label:'PFE DMAs',data:[pfeW12,pfePrior,pfeRecent],backgroundColor:'#378ADD',borderRadius:4},
+        {label:'Other CA DMAs',data:[otherW12,otherPrior,otherRecent],backgroundColor:'#D85A30',borderRadius:4}
       ]
     },
     options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
+      responsive:true,
+      plugins:{
+        legend:{position:'top'},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fmt(ctx.parsed.y)}}
+      },
       scales:{
-        x:{grid:{display:false},ticks:{color:textColor,font:{size:11}}},
-        y:{grid:{color:gridColor},ticks:{color:textColor,callback:v=>'$'+Math.round(v/1000)+'K'}}
+        y:{ticks:{callback:v=>fmtK(v)},grid:{color:'rgba(128,128,128,0.15)'}},
+        x:{grid:{display:false}}
       }
     }
   });
